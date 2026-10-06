@@ -6,8 +6,27 @@ export interface Usuario {
   data_criacao: string;
   data_atualizacao: string;
   papeis?: Papel[];
+  permissoes?: Permissao[];
   papeis_nomes?: string;
   papeis_ids?: string;
+}
+
+export interface TokenClaims {
+  id: string;
+  email: string;
+  nome: string;
+  papeis: string[];
+  permissoes?: string[];
+  iat?: number;
+  exp?: number;
+}
+
+export interface AuthResponse {
+  message: string;
+  token: string;
+  tokenType: string;
+  expiresIn: string;
+  usuario: Usuario;
 }
 
 export interface Papel {

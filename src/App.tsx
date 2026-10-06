@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
+import { LoginView } from './components/LoginView';
 import { DashboardView } from './components/DashboardView';
 import { BeneficiariosView } from './components/BeneficiariosView';
 import { UsuariosView } from './components/UsuariosView';
@@ -17,10 +18,12 @@ import {
   BeneficiarioBPC,
   BpcStats,
   DbStatus,
+  AuthResponse,
 } from './types';
 import { api } from './api';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => api.isAuthenticated());
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [loading, setLoading] = useState<boolean>(true);
   const [isDbModalOpen, setIsDbModalOpen] = useState<boolean>(false);
@@ -37,6 +40,11 @@ export default function App() {
   const [papelPermissao, setPapelPermissao] = useState<PapelPermissao[]>([]);
 
   const loadAllData = useCallback(async () => {
+    if (!api.isAuthenticated()) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const [
         statusRes,
@@ -77,8 +85,50 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadAllData();
+    const handleAuthExpired = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    };
+
+    const handleAuthLogout = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    };
+
+    window.addEventListener('bpc:auth_expired', handleAuthExpired);
+    window.addEventListener('bpc:auth_logout', handleAuthLogout);
+
+    if (api.isAuthenticated()) {
+      setIsAuthenticated(true);
+      loadAllData();
+    } else {
+      setLoading(false);
+      setIsAuthenticated(false);
+    }
+
+    return () => {
+      window.removeEventListener('bpc:auth_expired', handleAuthExpired);
+      window.removeEventListener('bpc:auth_logout', handleAuthLogout);
+    };
   }, [loadAllData]);
+
+  const handleLoginSuccess = (authData: AuthResponse) => {
+    setCurrentUser(authData.usuario);
+    setIsAuthenticated(true);
+    setLoading(true);
+    loadAllData();
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+  };
+
+  // Se não autenticado via JWT, renderiza a tela de login
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
@@ -90,6 +140,7 @@ export default function App() {
         currentUser={currentUser}
         onRefresh={loadAllData}
         onOpenDbModal={() => setIsDbModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -98,7 +149,7 @@ export default function App() {
           <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-slate-400 font-medium">
-              Carregando Painel BPC do Recife & Conectando ao Backend Fastify...
+              Autenticando requisições com JWT & Carregando Painel BPC...
             </p>
           </div>
         ) : (
@@ -171,6 +222,8 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <span>Fastify + Node</span>
+            <span>•</span>
+            <span className="text-indigo-400 font-medium">JWT HS256 Auth</span>
             <span>•</span>
             <span>MySQL Relational Engine</span>
             <span>•</span>

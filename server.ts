@@ -10,6 +10,7 @@ import { createServer as createViteServer } from 'vite';
 import fastifyStatic from '@fastify/static';
 
 import { dbManager } from './server/db.js';
+import { authenticateJWT } from './server/middleware/auth.js';
 import { authRoutes } from './server/routes/auth.js';
 import { usuariosRoutes } from './server/routes/usuarios.js';
 import { papeisRoutes } from './server/routes/papeis.js';
@@ -37,6 +38,9 @@ async function startServer() {
 
   // Enable middie for express/connect middleware support (Vite integration)
   await server.register(middie);
+
+  // Authenticate all incoming /api endpoints using JWT (except public login & health)
+  server.addHook('preHandler', authenticateJWT);
 
   // Health check
   server.get('/api/health', async () => {
@@ -68,7 +72,12 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: 'spa',
     });
-    server.use(vite.middlewares);
+    server.use((req, res, next) => {
+      if (req.url && req.url.startsWith('/api')) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     await server.register(fastifyStatic, {

@@ -425,17 +425,22 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
     }
 
     try {
-      this.pool = mysql.createPool({
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password,
-        database: this.connectionConfig.database,
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-        connectTimeout: 3000,
-      });
+      const dbUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+      if (dbUrl && !config) {
+        this.pool = mysql.createPool(dbUrl);
+      } else {
+        this.pool = mysql.createPool({
+          host: this.connectionConfig.host,
+          port: this.connectionConfig.port,
+          user: this.connectionConfig.user,
+          password: this.connectionConfig.password,
+          database: this.connectionConfig.database,
+          waitForConnections: true,
+          connectionLimit: 10,
+          queueLimit: 0,
+          connectTimeout: 3000,
+        });
+      }
 
       const connection = await this.pool.getConnection();
       await connection.ping();

@@ -1,108 +1,143 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { mockDb } from '../db.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'bpc_recife_jwt_secret_key_2026';
+import { mockDb, dbManager } from '../db.js';
+import { JWT_SECRET, TokenPayload } from '../middleware/auth.js';
 
 export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  // User Login
+  // POST /api/auth/login - Autenticação por credenciais com emissão de JWT
   fastify.post('/api/auth/login', async (request, reply) => {
     const { email, senha } = request.body as { email?: string; senha?: string };
 
     if (!email || !senha) {
-      return reply.status(400).send({ error: 'E-mail e senha são obrigatórios.' });
+      return reply.status(400).send({
+        error: 'Bad Request',
+        message: 'E-mail e senha são obrigatórios para autenticação.',
+      });
     }
 
-    const user = mockDb.usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = mockDb.usuarios.find((u) => u.email.toLowerCase() === normalizedEmail);
+
     if (!user) {
-      return reply.status(401).send({ error: 'Credenciais inválidas ou usuário não cadastrado.' });
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Credenciais inválidas: Usuário não encontrado no sistema SEMAS BPC.',
+      });
     }
 
     if (!user.ativo) {
-      return reply.status(403).send({ error: 'Usuário desativado. Entre em contato com a administração da SEMAS Recife.' });
+      return reply.status(403).send({
+        error: 'Forbidden',
+        message: 'Acesso bloqueado: Este usuário está inativo no cadastro da Prefeitura.',
+      });
     }
 
-    const match = user.senha ? bcrypt.compareSync(senha, user.senha) : true;
-    if (!match && senha !== 'recife123') {
-      return reply.status(401).send({ error: 'Senha incorreta.' });
+    // Validação da senha com bcrypt e fallback para credenciais de teste 'recife123'
+    const passwordMatches = user.senha ? bcrypt.compareSync(senha, user.senha) : false;
+    const isMasterDemoPassword = senha === 'recife123';
+
+    if (!passwordMatches && !isMasterDemoPassword) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Credenciais inválidas: Senha incorreta.',
+      });
     }
 
-    // Get user roles & permissions
-    const papelIds = mockDb.usuario_papel.filter((up) => up.usuario_id === user.id).map((up) => up.papel_id);
+    // Buscar papéis e permissões do usuário
+    const papelIds = mockDb.usuario_papel
+      .filter((up) => up.usuario_id === user.id)
+      .map((up) => up.papel_id);
+
     const roles = mockDb.papeis.filter((p) => papelIds.includes(p.id));
-    const permIds = mockDb.papel_permissao.filter((pp) => papelIds.includes(pp.papel_id)).map((pp) => pp.permissao_id);
+
+    const permIds = mockDb.papel_permissao
+      .filter((pp) => papelIds.includes(pp.papel_id))
+      .map((pp) => pp.permissao_id);
+
     const permissions = mockDb.permissoes.filter((perm) => permIds.includes(perm.id));
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        nome: user.nome,
-        papeis: roles.map((r) => r.nome),
-      },
-      JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const payload: TokenPayload = {
+      id: user.id,
+      email: user.email,
+      nome: user.nome,
+      papeis: roles.map((r) => r.nome),
+      permissoes: permissions.map((p) => p.nome),
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, {
+      expiresIn: '8h',
+      algorithm: 'HS256',
+    });
 
     return reply.send({
-      message: 'Login realizado com sucesso!',
+      message: 'Autenticado com sucesso!',
       token,
+      expiresIn: '8h',
+      tokenType: 'Bearer',
       usuario: {
         id: user.id,
         nome: user.nome,
         email: user.email,
         ativo: user.ativo,
+        data_criacao: user.data_criacao,
         papeis: roles,
         permissoes: permissions,
       },
     });
   });
 
-  // Get current logged-in user profile
+  // GET /api/auth/me - Dados do usuário atualmente autenticado via JWT
   fastify.get('/api/auth/me', async (request, reply) => {
-    const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // Default to first admin user for quick demo
-      const user = mockDb.usuarios[0];
-      const papelIds = mockDb.usuario_papel.filter((up) => up.usuario_id === user.id).map((up) => up.papel_id);
-      const roles = mockDb.papeis.filter((p) => papelIds.includes(p.id));
-      const permIds = mockDb.papel_permissao.filter((pp) => papelIds.includes(pp.papel_id)).map((pp) => pp.permissao_id);
-      const permissions = mockDb.permissoes.filter((perm) => permIds.includes(perm.id));
-
-      return reply.send({
-        usuario: {
-          id: user.id,
-          nome: user.nome,
-          email: user.email,
-          ativo: user.ativo,
-          papeis: roles,
-          permissoes: permissions,
-        },
+    const userPayload = request.user;
+    if (!userPayload) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'Token JWT não fornecido.',
       });
     }
 
-    try {
-      const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const user = mockDb.usuarios.find((u) => u.id === decoded.id) || mockDb.usuarios[0];
-      const papelIds = mockDb.usuario_papel.filter((up) => up.usuario_id === user.id).map((up) => up.papel_id);
-      const roles = mockDb.papeis.filter((p) => papelIds.includes(p.id));
-      const permIds = mockDb.papel_permissao.filter((pp) => papelIds.includes(pp.papel_id)).map((pp) => pp.permissao_id);
-      const permissions = mockDb.permissoes.filter((perm) => permIds.includes(perm.id));
-
-      return reply.send({
-        usuario: {
-          id: user.id,
-          nome: user.nome,
-          email: user.email,
-          ativo: user.ativo,
-          papeis: roles,
-          permissoes: permissions,
-        },
+    const user = mockDb.usuarios.find((u) => u.id === userPayload.id);
+    if (!user) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Usuário associado ao token não encontrado.',
       });
-    } catch {
-      return reply.status(401).send({ error: 'Token inválido ou expirado.' });
     }
+
+    const papelIds = mockDb.usuario_papel
+      .filter((up) => up.usuario_id === user.id)
+      .map((up) => up.papel_id);
+
+    const roles = mockDb.papeis.filter((p) => papelIds.includes(p.id));
+
+    const permIds = mockDb.papel_permissao
+      .filter((pp) => papelIds.includes(pp.papel_id))
+      .map((pp) => pp.permissao_id);
+
+    const permissions = mockDb.permissoes.filter((perm) => permIds.includes(perm.id));
+
+    return reply.send({
+      usuario: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        ativo: user.ativo,
+        data_criacao: user.data_criacao,
+        data_atualizacao: user.data_atualizacao,
+        papeis: roles,
+        permissoes: permissions,
+      },
+      tokenClaims: userPayload,
+    });
+  });
+
+  // POST /api/auth/verify - Verificação explícita de validade do token JWT
+  fastify.post('/api/auth/verify', async (request, reply) => {
+    return reply.send({
+      valid: true,
+      user: request.user,
+      message: 'Token JWT ativo e válido.',
+    });
   });
 };

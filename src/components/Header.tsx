@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, ShieldCheck, UserCheck, RefreshCw, Layers, Users, Key, Table, Activity } from 'lucide-react';
+import { Database, ShieldCheck, UserCheck, RefreshCw, Layers, Users, Key, Table, Activity, LogOut, KeyRound } from 'lucide-react';
 import { DbStatus, Usuario } from '../types';
 
 interface HeaderProps {
@@ -9,6 +9,7 @@ interface HeaderProps {
   currentUser: Usuario | null;
   onRefresh: () => void;
   onOpenDbModal: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onRefresh,
   onOpenDbModal,
+  onLogout,
 }) => {
   const tabs = [
     { id: 'dashboard', label: 'Painel BPC Recife', icon: Activity },
@@ -53,7 +55,17 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Status Indicators & Action */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          {/* JWT Auth Indicator Pill */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/30"
+            title="Requisições autenticadas com JSON Web Token (Bearer)"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Sessão:</span>
+            <span className="font-semibold">JWT Ativo</span>
+          </div>
+
           {/* DB Status Badge */}
           <button
             onClick={onOpenDbModal}
@@ -65,8 +77,11 @@ export const Header: React.FC<HeaderProps> = ({
             title="Clique para configurar o banco de dados MySQL"
           >
             <Database className="w-3.5 h-3.5" />
-            <span>
-              {dbStatus?.isConnectedToMySQL ? 'MySQL Conectado' : 'Modo Relacional (Schema MySQL Ativo)'}
+            <span className="hidden md:inline">
+              {dbStatus?.isConnectedToMySQL ? 'MySQL Conectado' : 'Modo Relacional (Schema Ativo)'}
+            </span>
+            <span className="md:hidden">
+              {dbStatus?.isConnectedToMySQL ? 'MySQL' : 'Memória'}
             </span>
             <span className="w-2 h-2 rounded-full animate-pulse bg-current" />
           </button>
@@ -74,26 +89,34 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Refresh Button */}
           <button
             onClick={onRefresh}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
             title="Atualizar dados"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          {/* User Profile Pill */}
+          {/* User Profile Pill & Logout */}
           {currentUser && (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
               <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-blue-400">
                 {currentUser.nome.charAt(0)}
               </div>
-              <div className="hidden sm:block text-left">
-                <div className="text-xs font-semibold text-slate-200 truncate max-w-[140px]">
+              <div className="hidden lg:block text-left">
+                <div className="text-xs font-semibold text-slate-200 truncate max-w-[130px]">
                   {currentUser.nome}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
                   {currentUser.papeis?.[0]?.nome || 'Usuário'}
                 </div>
               </div>
+              <button
+                onClick={onLogout}
+                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition cursor-pointer flex items-center gap-1 text-xs"
+                title="Encerrar sessão JWT"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
             </div>
           )}
         </div>
@@ -108,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
