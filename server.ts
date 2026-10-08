@@ -39,6 +39,21 @@ async function startServer() {
   // Enable middie for express/connect middleware support (Vite integration)
   await server.register(middie);
 
+  // Allow empty or blank JSON body gracefully without throwing FST_ERR_CTP_EMPTY_JSON_BODY
+  server.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body: string, done) => {
+    if (!body || body.trim() === '') {
+      done(null, {});
+      return;
+    }
+    try {
+      const json = JSON.parse(body);
+      done(null, json);
+    } catch (err: any) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  });
+
   // Authenticate all incoming /api endpoints using JWT (except public login & health)
   server.addHook('preHandler', authenticateJWT);
 

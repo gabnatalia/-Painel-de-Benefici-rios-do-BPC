@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import bcrypt from 'bcryptjs';
-import { dbManager, mockDb, Usuario } from '../db.js';
+import { dbManager, mockDb, Usuario, formatMySQLDateTime } from '../db.js';
 
 export const usuariosRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // List all users with their roles
@@ -103,9 +103,11 @@ export const usuariosRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
     // Attempt MySQL sync if connected
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlCreated = formatMySQLDateTime(newUser.data_criacao);
+        const mysqlUpdated = formatMySQLDateTime(newUser.data_atualizacao);
         await dbManager.query(
           `INSERT INTO usuarios (id, nome, email, senha, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [newUser.id, newUser.nome, newUser.email, newUser.senha, newUser.ativo, newUser.data_criacao, newUser.data_atualizacao]
+          [newUser.id, newUser.nome, newUser.email, newUser.senha, newUser.ativo, mysqlCreated, mysqlUpdated]
         );
         if (body.papeis_ids) {
           for (const pid of body.papeis_ids) {
@@ -158,9 +160,10 @@ export const usuariosRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlUpdated = formatMySQLDateTime(current.data_atualizacao);
         await dbManager.query(
           `UPDATE usuarios SET nome = ?, email = ?, ativo = ?, data_atualizacao = ? WHERE id = ?`,
-          [current.nome, current.email, current.ativo, current.data_atualizacao, id]
+          [current.nome, current.email, current.ativo, mysqlUpdated, id]
         );
         if (body.papeis_ids) {
           await dbManager.query(`DELETE FROM usuario_papel WHERE usuario_id = ?`, [id]);
@@ -188,7 +191,8 @@ export const usuariosRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
     user.data_atualizacao = new Date().toISOString();
 
     if (dbManager.isConnectedToMySQL) {
-      await dbManager.query(`UPDATE usuarios SET ativo = ?, data_atualizacao = ? WHERE id = ?`, [user.ativo, user.data_atualizacao, id]);
+      const mysqlUpdated = formatMySQLDateTime(user.data_atualizacao);
+      await dbManager.query(`UPDATE usuarios SET ativo = ?, data_atualizacao = ? WHERE id = ?`, [user.ativo, mysqlUpdated, id]);
     }
 
     return reply.send({ message: `Status do usuário atualizado para ${user.ativo ? 'Ativo' : 'Inativo'}`, user });

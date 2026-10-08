@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { dbManager, mockDb, BeneficiarioBPC } from '../db.js';
+import { dbManager, mockDb, BeneficiarioBPC, formatMySQLDateTime, formatMySQLDate } from '../db.js';
 
 export const beneficiariosRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // List BPC beneficiaries with search and filters
@@ -135,6 +135,10 @@ export const beneficiariosRoutes: FastifyPluginAsync = async (fastify: FastifyIn
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlCreated = formatMySQLDateTime(newBpc.data_atualizacao);
+        const mysqlDataConcessao = formatMySQLDate(newBpc.data_concessao);
+        const mysqlDataNascimento = formatMySQLDate(newBpc.data_nascimento);
+
         await dbManager.query(
           `INSERT INTO beneficiarios_bpc (id, nome_completo, cpf, nis, tipo_beneficio, bairro_recife, rpa, valor_beneficio, status, data_concessao, data_nascimento, cras_referencia, responsavel_legal, data_atualizacao)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -148,11 +152,11 @@ export const beneficiariosRoutes: FastifyPluginAsync = async (fastify: FastifyIn
             newBpc.rpa,
             newBpc.valor_beneficio,
             newBpc.status,
-            newBpc.data_concessao,
-            newBpc.data_nascimento,
+            mysqlDataConcessao,
+            mysqlDataNascimento,
             newBpc.cras_referencia,
             newBpc.responsavel_legal,
-            newBpc.data_atualizacao,
+            mysqlCreated,
           ]
         );
       } catch (err) {
@@ -175,9 +179,10 @@ export const beneficiariosRoutes: FastifyPluginAsync = async (fastify: FastifyIn
     item.data_atualizacao = new Date().toISOString();
 
     if (dbManager.isConnectedToMySQL) {
+      const mysqlUpdated = formatMySQLDateTime(item.data_atualizacao);
       await dbManager.query(`UPDATE beneficiarios_bpc SET status = ?, data_atualizacao = ? WHERE id = ?`, [
         item.status,
-        item.data_atualizacao,
+        mysqlUpdated,
         id,
       ]);
     }

@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { dbManager, mockDb, Permissao } from '../db.js';
+import { dbManager, mockDb, Permissao, formatMySQLDateTime } from '../db.js';
 
 export const permissoesRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // List all permissions with assigned roles
@@ -53,9 +53,11 @@ export const permissoesRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlCreated = formatMySQLDateTime(newPerm.data_criacao);
+        const mysqlUpdated = formatMySQLDateTime(newPerm.data_atualizacao);
         await dbManager.query(
           `INSERT INTO permissoes (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?)`,
-          [newPerm.id, newPerm.nome, newPerm.descricao, newPerm.data_criacao, newPerm.data_atualizacao]
+          [newPerm.id, newPerm.nome, newPerm.descricao, mysqlCreated, mysqlUpdated]
         );
       } catch (err) {
         console.warn('MySQL insert permissao error:', err);
@@ -80,10 +82,11 @@ export const permissoesRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlUpdated = formatMySQLDateTime(perm.data_atualizacao);
         await dbManager.query(`UPDATE permissoes SET nome = ?, descricao = ?, data_atualizacao = ? WHERE id = ?`, [
           perm.nome,
           perm.descricao,
-          perm.data_atualizacao,
+          mysqlUpdated,
           id,
         ]);
       } catch (err) {

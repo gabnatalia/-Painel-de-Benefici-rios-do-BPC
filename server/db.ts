@@ -37,6 +37,29 @@ export interface PapelPermissao {
   permissao_id: string;
 }
 
+/**
+ * Converte data para o formato aceito pelo tipo DATETIME do MySQL ('YYYY-MM-DD HH:MM:SS')
+ * Evita o erro ER_TRUNCATED_WRONG_VALUE (1292) causado pelo formato ISO-8601 ('T' e 'Z')
+ */
+export function formatMySQLDateTime(date: Date | string = new Date()): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) {
+    return new Date().toISOString().slice(0, 19).replace('T', ' ');
+  }
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
+ * Converte data para o formato aceito pelo tipo DATE do MySQL ('YYYY-MM-DD')
+ */
+export function formatMySQLDate(date: Date | string = new Date()): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+  return d.toISOString().slice(0, 10);
+}
+
 export interface BeneficiarioBPC {
   id: string;
   nome_completo: string;
@@ -528,7 +551,13 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
   public async query(sql: string, params: any[] = []): Promise<any> {
     if (this.isConnectedToMySQL && this.pool) {
       try {
-        const [rows] = await this.pool.query(sql, params);
+        const sanitizedParams = params.map((p) => {
+          if (typeof p === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(p)) {
+            return formatMySQLDateTime(p);
+          }
+          return p;
+        });
+        const [rows] = await this.pool.query(sql, sanitizedParams);
         return rows;
       } catch (err: any) {
         console.error('MySQL Query Error:', err);

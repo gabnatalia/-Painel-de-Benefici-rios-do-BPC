@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { dbManager, mockDb, Papel } from '../db.js';
+import { dbManager, mockDb, Papel, formatMySQLDateTime } from '../db.js';
 
 export const papeisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // List all roles with associated permissions & user count
@@ -78,9 +78,11 @@ export const papeisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlCreated = formatMySQLDateTime(newPapel.data_criacao);
+        const mysqlUpdated = formatMySQLDateTime(newPapel.data_atualizacao);
         await dbManager.query(
           `INSERT INTO papeis (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?)`,
-          [newPapel.id, newPapel.nome, newPapel.descricao, newPapel.data_criacao, newPapel.data_atualizacao]
+          [newPapel.id, newPapel.nome, newPapel.descricao, mysqlCreated, mysqlUpdated]
         );
         if (body.permissoes_ids) {
           for (const permId of body.permissoes_ids) {
@@ -121,10 +123,11 @@ export const papeisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
     if (dbManager.isConnectedToMySQL) {
       try {
+        const mysqlUpdated = formatMySQLDateTime(role.data_atualizacao);
         await dbManager.query(`UPDATE papeis SET nome = ?, descricao = ?, data_atualizacao = ? WHERE id = ?`, [
           role.nome,
           role.descricao,
-          role.data_atualizacao,
+          mysqlUpdated,
           id,
         ]);
         if (body.permissoes_ids) {
