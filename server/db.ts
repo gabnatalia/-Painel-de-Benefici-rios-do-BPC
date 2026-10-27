@@ -77,6 +77,30 @@ export interface BeneficiarioBPC {
   data_atualizacao: string;
 }
 
+export interface Painel {
+  id: string;
+  nome: string;
+  descricao?: string;
+  icone?: string;
+  ativo: boolean | number;
+  ordem: number;
+  data_criacao: string;
+  data_atualizacao: string;
+}
+
+export interface Indicador {
+  id: string;
+  painel_id: string;
+  nome: string;
+  descricao?: string;
+  valor: string;
+  tipo: string; // 'numero' | 'moeda' | 'percentual' | 'texto'
+  variacao?: string;
+  ordem: number;
+  data_criacao: string;
+  data_atualizacao: string;
+}
+
 // In-Memory Storage for immediate preview when MySQL server is not configured/reachable
 class MockDatabaseStore {
   usuarios: Usuario[] = [];
@@ -85,6 +109,8 @@ class MockDatabaseStore {
   usuario_papel: UsuarioPapel[] = [];
   papel_permissao: PapelPermissao[] = [];
   beneficiarios: BeneficiarioBPC[] = [];
+  paineis: Painel[] = [];
+  indicadores: Indicador[] = [];
 
   constructor() {
     this.seed();
@@ -328,6 +354,169 @@ class MockDatabaseStore {
         data_atualizacao: now,
       }
     ];
+
+    // 7. Painéis Estruturados (Dashboards do Recife)
+    this.paineis = [
+      {
+        id: 'painel-1',
+        nome: 'Painel Executivo BPC Recife',
+        descricao: 'Visão consolidada de concessões, orçamento e cobertura social no município do Recife',
+        icone: 'LayoutDashboard',
+        ativo: 1,
+        ordem: 1,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'painel-2',
+        nome: 'Monitoramento Territorial por RPA',
+        descricao: 'Indicadores geográficos e demanda por Região Político-Administrativa do Recife (RPAs 1 a 6)',
+        icone: 'MapPin',
+        ativo: 1,
+        ordem: 2,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'painel-3',
+        nome: 'Auditoria e Conformidade Cadastral',
+        descricao: 'Acompanhamento de revisões do CadÚnico, bloqueios preventivos e conformidade LOAS',
+        icone: 'ShieldCheck',
+        ativo: 1,
+        ordem: 3,
+        data_criacao: now,
+        data_atualizacao: now,
+      }
+    ];
+
+    // 8. Indicadores (Métricas com FK painel_id -> paineis.id)
+    this.indicadores = [
+      // Indicadores do Painel 1 (Executivo)
+      {
+        id: 'ind-1',
+        painel_id: 'painel-1',
+        nome: 'Beneficiários Ativos',
+        descricao: 'Total de cidadãos recifenses com benefício BPC regularizado e ativo',
+        valor: '8.432',
+        tipo: 'numero',
+        variacao: '+3.8% este mês',
+        ordem: 1,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-2',
+        painel_id: 'painel-1',
+        nome: 'Injeção Econômica Mensal',
+        descricao: 'Recursos federais injetados mensalmente na economia local do Recife',
+        valor: 'R$ 11.905.984,00',
+        tipo: 'moeda',
+        variacao: 'R$ 1.412,00 por titular',
+        ordem: 2,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-3',
+        painel_id: 'painel-1',
+        nome: 'Idosos Beneficiários (65+)',
+        descricao: 'Idosos em situação de extrema vulnerabilidade atendidos no Recife',
+        valor: '4.890',
+        tipo: 'numero',
+        variacao: '58% do total',
+        ordem: 3,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-4',
+        painel_id: 'painel-1',
+        nome: 'Pessoas com Deficiência (PCD)',
+        descricao: 'PCDs amparados pelo BPC com laudo social e perícia validados',
+        valor: '3.542',
+        tipo: 'numero',
+        variacao: '42% do total',
+        ordem: 4,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+
+      // Indicadores do Painel 2 (Territorial RPA)
+      {
+        id: 'ind-5',
+        painel_id: 'painel-2',
+        nome: 'Maior Cobertura: RPA 3 (Norte)',
+        descricao: 'Alto José do Pinho, Casa Amarela, Vasco da Gama e adjacências',
+        valor: '2.140',
+        tipo: 'numero',
+        variacao: '25.4% do município',
+        ordem: 1,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-6',
+        painel_id: 'painel-2',
+        nome: 'Alta Demanda: RPA 6 (Sul)',
+        descricao: 'Ibura, Jordão, Pina e Boa Viagem',
+        valor: '1.980',
+        tipo: 'numero',
+        variacao: '23.5% do município',
+        ordem: 2,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-7',
+        painel_id: 'painel-2',
+        nome: 'CRAS de Maior Referência',
+        descricao: 'CRAS Campina do Barreto / RPA 2 com maior número de titulares',
+        valor: '890 cadastros',
+        tipo: 'texto',
+        variacao: 'Capacidade máxima de atendimento',
+        ordem: 3,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+
+      // Indicadores do Painel 3 (Auditoria)
+      {
+        id: 'ind-8',
+        painel_id: 'painel-3',
+        nome: 'Cadastros em Revisão',
+        descricao: 'Pendentes de atualização de dados junto ao CRAS ou CadÚnico',
+        valor: '312',
+        tipo: 'numero',
+        variacao: '3.7% do total',
+        ordem: 1,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-9',
+        painel_id: 'painel-3',
+        nome: 'Benefícios Bloqueados/Suspensos',
+        descricao: 'Por inconformidade de renda ou pendência cadastral',
+        valor: '98',
+        tipo: 'numero',
+        variacao: '-12 regularizados nesta semana',
+        ordem: 2,
+        data_criacao: now,
+        data_atualizacao: now,
+      },
+      {
+        id: 'ind-10',
+        painel_id: 'painel-3',
+        nome: 'Índice de Regularidade Social',
+        descricao: 'Percentual de beneficiários com dados 100% em dia no município',
+        valor: '96.3%',
+        tipo: 'percentual',
+        variacao: '+0.5% vs trimestre anterior',
+        ordem: 3,
+        data_criacao: now,
+        data_atualizacao: now,
+      }
+    ];
   }
 }
 
@@ -439,6 +628,37 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
   INDEX \`idx_bpc_rpa\` (\`rpa\`),
   INDEX \`idx_bpc_status\` (\`status\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 7. Tabela: paineis (Painéis/Dashboards do BPC Recife)
+CREATE TABLE IF NOT EXISTS \`paineis\` (
+  \`id\` VARCHAR(36) NOT NULL,
+  \`nome\` VARCHAR(255) NOT NULL,
+  \`descricao\` TEXT NULL,
+  \`icone\` VARCHAR(50) NOT NULL DEFAULT 'LayoutDashboard',
+  \`ativo\` TINYINT(1) NOT NULL DEFAULT 1,
+  \`ordem\` INT NOT NULL DEFAULT 0,
+  \`data_criacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`data_atualizacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  INDEX \`idx_paineis_ativo\` (\`ativo\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. Tabela: indicadores (Indicadores com Chave Estrangeira painel_id -> paineis.id)
+CREATE TABLE IF NOT EXISTS \`indicadores\` (
+  \`id\` VARCHAR(36) NOT NULL,
+  \`painel_id\` VARCHAR(36) NOT NULL,
+  \`nome\` VARCHAR(255) NOT NULL,
+  \`descricao\` TEXT NULL,
+  \`valor\` VARCHAR(100) NOT NULL,
+  \`tipo\` VARCHAR(50) NOT NULL DEFAULT 'numero',
+  \`variacao\` VARCHAR(50) NULL,
+  \`ordem\` INT NOT NULL DEFAULT 0,
+  \`data_criacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`data_atualizacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  INDEX \`idx_indicadores_painel\` (\`painel_id\`),
+  CONSTRAINT \`fk_indicadores_painel\` FOREIGN KEY (\`painel_id\`) REFERENCES \`paineis\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
   }
 
@@ -471,6 +691,9 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
 
       // Ensure tables exist on real MySQL
       await this.runDDL();
+
+      // Ensure initial seed data exists on real MySQL
+      await this.seedMySQL();
 
       this.isConnectedToMySQL = true;
       this.lastError = null;
@@ -535,6 +758,30 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
         cras_referencia VARCHAR(150) NOT NULL,
         responsavel_legal VARCHAR(255),
         data_atualizacao DATETIME NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS paineis (
+        id VARCHAR(36) PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        icone VARCHAR(50) NOT NULL DEFAULT 'LayoutDashboard',
+        ativo TINYINT(1) NOT NULL DEFAULT 1,
+        ordem INT NOT NULL DEFAULT 0,
+        data_criacao DATETIME NOT NULL,
+        data_atualizacao DATETIME NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS indicadores (
+        id VARCHAR(36) PRIMARY KEY,
+        painel_id VARCHAR(36) NOT NULL,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        valor VARCHAR(100) NOT NULL,
+        tipo VARCHAR(50) NOT NULL DEFAULT 'numero',
+        variacao VARCHAR(50),
+        ordem INT NOT NULL DEFAULT 0,
+        data_criacao DATETIME NOT NULL,
+        data_atualizacao DATETIME NOT NULL,
+        INDEX idx_indicadores_painel (painel_id),
+        CONSTRAINT fk_indicadores_painel FOREIGN KEY (painel_id) REFERENCES paineis (id) ON DELETE CASCADE ON UPDATE CASCADE
       )`
     ];
 
@@ -544,6 +791,118 @@ CREATE TABLE IF NOT EXISTS \`beneficiarios_bpc\` (
       } catch (e) {
         console.warn('Erro ao criar tabela MySQL:', e);
       }
+    }
+  }
+
+  public async seedMySQL() {
+    if (!this.pool) return;
+    try {
+      // 1. Permissoes
+      const [permRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM permissoes');
+      if (permRows[0]?.cnt === 0) {
+        for (const p of mockDb.permissoes) {
+          await this.pool.query(
+            'INSERT INTO permissoes (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?)',
+            [p.id, p.nome, p.descricao, formatMySQLDateTime(p.data_criacao), formatMySQLDateTime(p.data_atualizacao)]
+          );
+        }
+      }
+
+      // 2. Papeis
+      const [papelRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM papeis');
+      if (papelRows[0]?.cnt === 0) {
+        for (const p of mockDb.papeis) {
+          await this.pool.query(
+            'INSERT INTO papeis (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?)',
+            [p.id, p.nome, p.descricao, formatMySQLDateTime(p.data_criacao), formatMySQLDateTime(p.data_atualizacao)]
+          );
+        }
+      }
+
+      // 3. Papel - Permissao
+      const [ppRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM papel_permissao');
+      if (ppRows[0]?.cnt === 0) {
+        for (const pp of mockDb.papel_permissao) {
+          await this.pool.query(
+            'INSERT IGNORE INTO papel_permissao (papel_id, permissao_id) VALUES (?, ?)',
+            [pp.papel_id, pp.permissao_id]
+          );
+        }
+      }
+
+      // 4. Usuarios
+      const [userRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM usuarios');
+      if (userRows[0]?.cnt === 0) {
+        for (const u of mockDb.usuarios) {
+          await this.pool.query(
+            'INSERT INTO usuarios (id, nome, email, senha, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [u.id, u.nome, u.email, u.senha, u.ativo, formatMySQLDateTime(u.data_criacao), formatMySQLDateTime(u.data_atualizacao)]
+          );
+        }
+      }
+
+      // 5. Usuario - Papel
+      const [upRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM usuario_papel');
+      if (upRows[0]?.cnt === 0) {
+        for (const up of mockDb.usuario_papel) {
+          await this.pool.query(
+            'INSERT IGNORE INTO usuario_papel (usuario_id, papel_id) VALUES (?, ?)',
+            [up.usuario_id, up.papel_id]
+          );
+        }
+      }
+
+      // 6. Beneficiarios BPC
+      const [bpcRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM beneficiarios_bpc');
+      if (bpcRows[0]?.cnt === 0) {
+        for (const b of mockDb.beneficiarios) {
+          await this.pool.query(
+            `INSERT INTO beneficiarios_bpc (id, nome_completo, cpf, nis, tipo_beneficio, bairro_recife, rpa, valor_beneficio, status, data_concessao, data_nascimento, cras_referencia, responsavel_legal, data_atualizacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              b.id,
+              b.nome_completo,
+              b.cpf,
+              b.nis,
+              b.tipo_beneficio,
+              b.bairro_recife,
+              b.rpa,
+              b.valor_beneficio,
+              b.status,
+              formatMySQLDate(b.data_concessao),
+              formatMySQLDate(b.data_nascimento),
+              b.cras_referencia,
+              b.responsavel_legal,
+              formatMySQLDateTime(b.data_atualizacao),
+            ]
+          );
+        }
+      }
+
+      // 7. Paineis
+      const [painelRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM paineis');
+      if (painelRows[0]?.cnt === 0) {
+        for (const pn of mockDb.paineis) {
+          await this.pool.query(
+            'INSERT INTO paineis (id, nome, descricao, icone, ativo, ordem, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [pn.id, pn.nome, pn.descricao || null, pn.icone || 'LayoutDashboard', pn.ativo ? 1 : 0, pn.ordem || 0, formatMySQLDateTime(pn.data_criacao), formatMySQLDateTime(pn.data_atualizacao)]
+          );
+        }
+      }
+
+      // 8. Indicadores (com chave estrangeira fk_indicadores_painel)
+      const [indRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM indicadores');
+      if (indRows[0]?.cnt === 0) {
+        for (const ind of mockDb.indicadores) {
+          await this.pool.query(
+            'INSERT INTO indicadores (id, painel_id, nome, descricao, valor, tipo, variacao, ordem, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [ind.id, ind.painel_id, ind.nome, ind.descricao || null, ind.valor, ind.tipo || 'numero', ind.variacao || null, ind.ordem || 0, formatMySQLDateTime(ind.data_criacao), formatMySQLDateTime(ind.data_atualizacao)]
+          );
+        }
+      }
+      console.log('[MySQL] Tabelas sincronizadas e populadas com os dados do Recife!');
+    } catch (err) {
+      console.warn('[MySQL Seed Error]:', err);
     }
   }
 

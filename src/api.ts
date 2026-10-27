@@ -10,6 +10,8 @@ import {
   DbSchemaResponse,
   AuthResponse,
   TokenClaims,
+  Painel,
+  Indicador,
 } from './types';
 
 const API_BASE = '/api';
@@ -302,5 +304,63 @@ export const api = {
 
   deleteBeneficiario: async (id: string) => {
     return requestWithAuth(`/beneficiarios/${id}`, { method: 'DELETE' });
+  },
+
+  // Painéis & Indicadores
+  getPaineis: async (): Promise<Painel[]> => {
+    return requestWithAuth('/paineis');
+  },
+
+  getPainelById: async (id: string): Promise<Painel> => {
+    return requestWithAuth(`/paineis/${id}`);
+  },
+
+  createPainel: async (data: { nome: string; descricao?: string; icone?: string; ativo?: boolean | number; ordem?: number }): Promise<any> => {
+    return requestWithAuth('/paineis', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updatePainel: async (id: string, data: Partial<Painel>): Promise<any> => {
+    return requestWithAuth(`/paineis/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deletePainel: async (id: string): Promise<any> => {
+    return requestWithAuth(`/paineis/${id}`, { method: 'DELETE' });
+  },
+
+  getIndicadores: async (painel_id?: string): Promise<Indicador[]> => {
+    const q = painel_id ? `?painel_id=${painel_id}` : '';
+    return requestWithAuth(`/indicadores${q}`);
+  },
+
+  createIndicador: async (data: {
+    painel_id: string;
+    nome: string;
+    valor: string;
+    tipo?: string;
+    descricao?: string;
+    variacao?: string;
+    ordem?: number;
+  }): Promise<any> => {
+    return requestWithAuth('/indicadores', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateIndicador: async (id: string, data: Partial<Indicador>): Promise<any> => {
+    return requestWithAuth(`/indicadores/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteIndicador: async (id: string): Promise<any> => {
+    return requestWithAuth(`/indicadores/${id}`, { method: 'DELETE' });
   },
 };

@@ -17,6 +17,7 @@ import { papeisRoutes } from './server/routes/papeis.js';
 import { permissoesRoutes } from './server/routes/permissoes.js';
 import { relacoesRoutes } from './server/routes/relacoes.js';
 import { beneficiariosRoutes } from './server/routes/beneficiarios.js';
+import { paineisRoutes } from './server/routes/paineis.js';
 import { databaseRoutes } from './server/routes/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -74,6 +75,7 @@ async function startServer() {
   await server.register(permissoesRoutes);
   await server.register(relacoesRoutes);
   await server.register(beneficiariosRoutes);
+  await server.register(paineisRoutes);
   await server.register(databaseRoutes);
 
   // Initialize Database connection in background

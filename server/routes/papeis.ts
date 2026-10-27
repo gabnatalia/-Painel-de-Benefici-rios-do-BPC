@@ -5,6 +5,36 @@ export const papeisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
   // List all roles with associated permissions & user count
   fastify.get('/api/papeis', async (request, reply) => {
     try {
+      if (dbManager.isConnectedToMySQL) {
+        const rows: any = await dbManager.query(`
+          SELECT p.id, p.nome, p.descricao, p.data_criacao, p.data_atualizacao,
+                 GROUP_CONCAT(DISTINCT pp.permissao_id) as permissoes_ids_str,
+                 COUNT(DISTINCT up.usuario_id) as total_usuarios
+          FROM papeis p
+          LEFT JOIN papel_permissao pp ON p.id = pp.papel_id
+          LEFT JOIN usuario_papel up ON p.id = up.papel_id
+          GROUP BY p.id
+          ORDER BY p.data_criacao ASC
+        `);
+
+        const formatted = (rows || []).map((p: any) => {
+          const permIdList = p.permissoes_ids_str ? p.permissoes_ids_str.split(',') : [];
+          const permissions = mockDb.permissoes.filter((perm) => permIdList.includes(perm.id));
+          return {
+            id: p.id,
+            nome: p.nome,
+            descricao: p.descricao,
+            data_criacao: p.data_criacao,
+            data_atualizacao: p.data_atualizacao,
+            permissoes: permissions,
+            permissoes_ids: permIdList,
+            total_usuarios: Number(p.total_usuarios) || 0,
+          };
+        });
+
+        return reply.send(formatted);
+      }
+
       const result = mockDb.papeis.map((p) => {
         const permIds = mockDb.papel_permissao
           .filter((pp) => pp.papel_id === p.id)
@@ -43,27 +73,48 @@ export const papeisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
   // Create role
   fastify.post('/api/papeis', async (request, reply) => {
-    const body = request.body as {
-      nome: string;
-      descricao: string;
+    const body = (request.body || {}) as {
+      nome?: string;
+      name?: string;
+      Nome?: string;
+      descricao?: string;
+      description?: string;
+      Descricao?: string;
       permissoes_ids?: string[];
     };
 
-    if (!body.nome) {
-      return reply.status(400).send({ error: 'O nome do papel é obrigatório.' });
+    const nome = (body.nome || body.name || body.Nome)?.trim();
+    const descricao = (body.descricao || body.description || body.Descricao || '').trim();
+
+    if (!nome) {
+      return reply.status(400).send({
+        error: 'O nome do papel é obrigatório.',
+        expectedBodyExample: {
+          nome: 'Coordenador CRAS',
+          descricao: 'Descrição opcional do papel',
+          permissoes_ids: ['perm-1', 'perm-2']
+        }
+      });
     }
 
-    const exists = mockDb.papeis.some((p) => p.nome.toLowerCase() === body.nome.toLowerCase());
-    if (exists) {
-      return reply.status(400).send({ error: 'Já existe um papel com este nome.' });
+    if (dbManager.isConnectedToMySQL) {
+      const existingInDb: any = await dbManager.query('SELECT id FROM papeis WHERE LOWER(nome) = LOWER(?)', [nome]);
+      if (existingInDb && existingInDb.length > 0) {
+        return reply.status(400).send({ error: 'Já existe um papel com este nome cadastrado no MySQL.' });
+      }
+    } else {
+      const exists = mockDb.papeis.some((p) => p.nome.toLowerCase() === nome.toLowerCase());
+      if (exists) {
+        return reply.status(400).send({ error: 'Já existe um papel com este nome.' });
+      }
     }
 
     const now = new Date().toISOString();
     const newId = `papel-${Date.now()}`;
     const newPapel: Papel = {
       id: newId,
-      nome: body.nome,
-      descricao: body.descricao || '',
+      nome,
+      descricao,
       data_criacao: now,
       data_atualizacao: now,
     };

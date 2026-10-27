@@ -5,6 +5,18 @@ export const permissoesRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
   // List all permissions with assigned roles
   fastify.get('/api/permissoes', async (request, reply) => {
     try {
+      if (dbManager.isConnectedToMySQL) {
+        const rows: any = await dbManager.query(`
+          SELECT p.id, p.nome, p.descricao, p.data_criacao, p.data_atualizacao,
+                 COUNT(DISTINCT pp.papel_id) as total_papeis
+          FROM permissoes p
+          LEFT JOIN papel_permissao pp ON p.id = pp.permissao_id
+          GROUP BY p.id
+          ORDER BY p.data_criacao ASC
+        `);
+        return reply.send(rows || []);
+      }
+
       const result = mockDb.permissoes.map((p) => {
         const papelIds = mockDb.papel_permissao
           .filter((pp) => pp.permissao_id === p.id)

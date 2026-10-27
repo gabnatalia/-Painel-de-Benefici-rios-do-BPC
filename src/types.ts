@@ -100,6 +100,33 @@ export interface BpcStats {
   bairrosCount: Record<string, number>;
 }
 
+export interface Painel {
+  id: string;
+  nome: string;
+  descricao?: string;
+  icone?: string;
+  ativo: boolean | number;
+  ordem: number;
+  data_criacao: string;
+  data_atualizacao: string;
+  indicadores?: Indicador[];
+  total_indicadores?: number;
+}
+
+export interface Indicador {
+  id: string;
+  painel_id: string;
+  nome: string;
+  descricao?: string;
+  valor: string;
+  tipo: string;
+  variacao?: string;
+  ordem: number;
+  data_criacao: string;
+  data_atualizacao: string;
+  painel_nome?: string;
+}
+
 export interface DbStatus {
   isConnectedToMySQL: boolean;
   config: {
@@ -117,6 +144,8 @@ export interface DbStatus {
     usuario_papel: number;
     papel_permissao: number;
     beneficiarios_bpc: number;
+    paineis?: number;
+    indicadores?: number;
   };
 }
 

@@ -4,6 +4,43 @@ import { dbManager, mockDb, MySQLConfig } from '../db.js';
 export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // Get database status, metrics and entity counts
   fastify.get('/api/db/status', async (request, reply) => {
+    let counts = {
+      usuarios: mockDb.usuarios.length,
+      papeis: mockDb.papeis.length,
+      permissoes: mockDb.permissoes.length,
+      usuario_papel: mockDb.usuario_papel.length,
+      papel_permissao: mockDb.papel_permissao.length,
+      beneficiarios_bpc: mockDb.beneficiarios.length,
+      paineis: mockDb.paineis.length,
+      indicadores: mockDb.indicadores.length,
+    };
+
+    if (dbManager.isConnectedToMySQL) {
+      try {
+        const [u]: any = await dbManager.query('SELECT COUNT(*) as c FROM usuarios');
+        const [p]: any = await dbManager.query('SELECT COUNT(*) as c FROM papeis');
+        const [per]: any = await dbManager.query('SELECT COUNT(*) as c FROM permissoes');
+        const [up]: any = await dbManager.query('SELECT COUNT(*) as c FROM usuario_papel');
+        const [pp]: any = await dbManager.query('SELECT COUNT(*) as c FROM papel_permissao');
+        const [b]: any = await dbManager.query('SELECT COUNT(*) as c FROM beneficiarios_bpc');
+        const [pn]: any = await dbManager.query('SELECT COUNT(*) as c FROM paineis');
+        const [ind]: any = await dbManager.query('SELECT COUNT(*) as c FROM indicadores');
+
+        counts = {
+          usuarios: Number(u?.c ?? counts.usuarios),
+          papeis: Number(p?.c ?? counts.papeis),
+          permissoes: Number(per?.c ?? counts.permissoes),
+          usuario_papel: Number(up?.c ?? counts.usuario_papel),
+          papel_permissao: Number(pp?.c ?? counts.papel_permissao),
+          beneficiarios_bpc: Number(b?.c ?? counts.beneficiarios_bpc),
+          paineis: Number(pn?.c ?? counts.paineis),
+          indicadores: Number(ind?.c ?? counts.indicadores),
+        };
+      } catch (e) {
+        // use fallback mock counts
+      }
+    }
+
     return reply.send({
       isConnectedToMySQL: dbManager.isConnectedToMySQL,
       config: {
@@ -14,14 +51,7 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
       },
       lastError: dbManager.lastError,
       mode: dbManager.isConnectedToMySQL ? 'MySQL Remoto/Local Ativo' : 'Simulação Relacional em Memória com Validação DDL',
-      entityCounts: {
-        usuarios: mockDb.usuarios.length,
-        papeis: mockDb.papeis.length,
-        permissoes: mockDb.permissoes.length,
-        usuario_papel: mockDb.usuario_papel.length,
-        papel_permissao: mockDb.papel_permissao.length,
-        beneficiarios_bpc: mockDb.beneficiarios.length,
-      },
+      entityCounts: counts,
     });
   });
 
@@ -60,6 +90,16 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           descricao: 'Registros de beneficiários BPC (Idosos e PCDs) da cidade do Recife',
           colunas: ['id (PK)', 'nome_completo', 'cpf (UNIQUE)', 'nis (UNIQUE)', 'tipo_beneficio', 'bairro_recife', 'rpa (1-6)', 'valor_beneficio', 'status', 'data_concessao', 'data_nascimento', 'cras_referencia', 'responsavel_legal', 'data_atualizacao'],
         },
+        {
+          name: 'paineis',
+          descricao: 'Painéis e módulos temáticos de indicadores sociais de Recife',
+          colunas: ['id (PK)', 'nome', 'descricao', 'icone', 'ativo (BOOLEAN)', 'ordem (INT)', 'data_criacao', 'data_atualizacao'],
+        },
+        {
+          name: 'indicadores',
+          descricao: 'Métricas e indicadores vinculados a um painel via Chave Estrangeira (1:N)',
+          colunas: ['id (PK)', 'painel_id (FK -> paineis.id ON DELETE CASCADE)', 'nome', 'descricao', 'valor', 'tipo', 'variacao', 'ordem (INT)', 'data_criacao', 'data_atualizacao'],
+        },
       ],
     });
   });
@@ -81,6 +121,9 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   // Reseed data
   fastify.post('/api/db/reseed', async (request, reply) => {
     mockDb.seed();
-    return reply.send({ message: 'Dados de exemplo restaurados com sucesso!' });
+    if (dbManager.isConnectedToMySQL) {
+      await dbManager.seedMySQL();
+    }
+    return reply.send({ message: 'Dados de exemplo restaurados e sincronizados com o MySQL com sucesso!' });
   });
 };

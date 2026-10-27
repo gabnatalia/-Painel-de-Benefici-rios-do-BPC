@@ -7,6 +7,7 @@ import { UsuariosView } from './components/UsuariosView';
 import { PapeisView } from './components/PapeisView';
 import { PermissoesView } from './components/PermissoesView';
 import { MatrizRbacView } from './components/MatrizRbacView';
+import { PaineisView } from './components/PaineisView';
 import { DatabaseSchemaView } from './components/DatabaseSchemaView';
 import { DbConnectionModal } from './components/DbConnectionModal';
 import {
@@ -200,6 +201,12 @@ export default function App() {
                 usuarioPapel={usuarioPapel}
                 papelPermissao={papelPermissao}
                 onRefresh={loadAllData}
+              />
+            )}
+
+            {activeTab === 'paineis' && (
+              <PaineisView
+                onRefreshParent={loadAllData}
               />
             )}
 

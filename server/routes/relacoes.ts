@@ -6,6 +6,16 @@ export const relacoesRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   // List all usuario_papel relations with rich metadata
   fastify.get('/api/usuario-papel', async (request, reply) => {
     try {
+      if (dbManager.isConnectedToMySQL) {
+        const rows: any = await dbManager.query(`
+          SELECT up.usuario_id, up.papel_id, u.nome as usuario_nome, u.email as usuario_email, p.nome as papel_nome
+          FROM usuario_papel up
+          JOIN usuarios u ON up.usuario_id = u.id
+          JOIN papeis p ON up.papel_id = p.id
+        `);
+        return reply.send(rows || []);
+      }
+
       const items = mockDb.usuario_papel.map((rel) => {
         const usuario = mockDb.usuarios.find((u) => u.id === rel.usuario_id);
         const papel = mockDb.papeis.find((p) => p.id === rel.papel_id);
@@ -72,6 +82,16 @@ export const relacoesRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   // List all papel_permissao relations
   fastify.get('/api/papel-permissao', async (request, reply) => {
     try {
+      if (dbManager.isConnectedToMySQL) {
+        const rows: any = await dbManager.query(`
+          SELECT pp.papel_id, pp.permissao_id, p.nome as papel_nome, perm.nome as permissao_nome, perm.descricao as permissao_descricao
+          FROM papel_permissao pp
+          JOIN papeis p ON pp.papel_id = p.id
+          JOIN permissoes perm ON pp.permissao_id = perm.id
+        `);
+        return reply.send(rows || []);
+      }
+
       const items = mockDb.papel_permissao.map((rel) => {
         const papel = mockDb.papeis.find((p) => p.id === rel.papel_id);
         const permissao = mockDb.permissoes.find((perm) => perm.id === rel.permissao_id);

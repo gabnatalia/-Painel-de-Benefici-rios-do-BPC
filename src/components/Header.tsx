@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, ShieldCheck, UserCheck, RefreshCw, Layers, Users, Key, Table, Activity, LogOut, KeyRound } from 'lucide-react';
+import { Database, ShieldCheck, UserCheck, RefreshCw, Layers, Users, Key, Table, Activity, LogOut, KeyRound, LayoutDashboard } from 'lucide-react';
 import { DbStatus, Usuario } from '../types';
 
 interface HeaderProps {
@@ -28,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'papeis', label: 'Papéis', icon: ShieldCheck, entity: 'papeis' },
     { id: 'permissoes', label: 'Permissões', icon: Key, entity: 'permissoes' },
     { id: 'rbac', label: 'Matriz de Acessos', icon: Layers, entity: 'N:N' },
+    { id: 'paineis', label: 'Painéis & Indicadores', icon: LayoutDashboard, badge: 'FK 1:N' },
     { id: 'schema', label: 'Schema MySQL & Fastify', icon: Table, badge: 'MySQL' },
   ];
 
