@@ -20,6 +20,7 @@ import {
   BpcStats,
   DbStatus,
   AuthResponse,
+  Painel,
 } from './types';
 import { api } from './api';
 
@@ -39,6 +40,7 @@ export default function App() {
   const [permissoes, setPermissoes] = useState<Permissao[]>([]);
   const [usuarioPapel, setUsuarioPapel] = useState<UsuarioPapel[]>([]);
   const [papelPermissao, setPapelPermissao] = useState<PapelPermissao[]>([]);
+  const [paineis, setPaineis] = useState<Painel[]>([]);
 
   const loadAllData = useCallback(async () => {
     if (!api.isAuthenticated()) {
@@ -57,6 +59,7 @@ export default function App() {
         permissoesRes,
         upRes,
         ppRes,
+        paineisRes,
       ] = await Promise.all([
         api.getDbStatus().catch(() => null),
         api.getMe().catch(() => null),
@@ -67,6 +70,7 @@ export default function App() {
         api.getPermissoes().catch(() => []),
         api.getUsuarioPapel().catch(() => []),
         api.getPapelPermissao().catch(() => []),
+        api.getPaineis().catch(() => []),
       ]);
 
       if (statusRes) setDbStatus(statusRes);
@@ -78,6 +82,7 @@ export default function App() {
       if (Array.isArray(permissoesRes)) setPermissoes(permissoesRes);
       if (Array.isArray(upRes)) setUsuarioPapel(upRes);
       if (Array.isArray(ppRes)) setPapelPermissao(ppRes);
+      if (Array.isArray(paineisRes)) setPaineis(paineisRes);
     } catch (err) {
       console.error('Error fetching app data:', err);
     } finally {
@@ -159,6 +164,8 @@ export default function App() {
               <DashboardView
                 stats={bpcStats}
                 dbStatus={dbStatus}
+                paineis={paineis}
+                onRefreshParent={loadAllData}
                 onNavigateTab={(tab) => setActiveTab(tab)}
               />
             )}

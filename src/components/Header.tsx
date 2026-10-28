@@ -22,101 +22,86 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
 }) => {
   const tabs = [
-    { id: 'dashboard', label: 'Painel BPC Recife', icon: Activity },
+    { id: 'dashboard', label: 'Painéis do BPC', icon: LayoutDashboard },
     { id: 'beneficiarios', label: 'Beneficiários', icon: Users },
-    { id: 'usuarios', label: 'Usuários', icon: UserCheck, entity: 'usuarios' },
-    { id: 'papeis', label: 'Papéis', icon: ShieldCheck, entity: 'papeis' },
-    { id: 'permissoes', label: 'Permissões', icon: Key, entity: 'permissoes' },
-    { id: 'rbac', label: 'Matriz de Acessos', icon: Layers, entity: 'N:N' },
-    { id: 'paineis', label: 'Painéis & Indicadores', icon: LayoutDashboard, badge: 'FK 1:N' },
-    { id: 'schema', label: 'Schema MySQL & Fastify', icon: Table, badge: 'MySQL' },
+    { id: 'usuarios', label: 'Usuários', icon: UserCheck },
+    { id: 'papeis', label: 'Papéis', icon: ShieldCheck },
+    { id: 'permissoes', label: 'Permissões', icon: Key },
+    { id: 'rbac', label: 'Matriz RBAC', icon: Layers },
+    { id: 'schema', label: 'Banco MySQL', icon: Database },
   ];
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-xl">
+    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-md">
       {/* Top Banner with Recife identity */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 font-black text-xl tracking-wider">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm tracking-wider">
             REC
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-white tracking-tight">
-                Painel de Beneficiário BPC do Recife
+              <h1 className="text-sm font-bold text-white tracking-tight">
+                Painel do Beneficiário BPC • Recife
               </h1>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                SEMAS Recife
-              </span>
+              <span className="text-xs text-slate-400">· SEMAS</span>
             </div>
-            <p className="text-xs text-slate-400">
-              Prefeitura do Recife • Gestão de Benefício de Prestação Continuada (LOAS) & Controle RBAC
+            <p className="text-[11px] text-slate-400">
+              Gestão de Benefício de Prestação Continuada (LOAS) & Controle RBAC
             </p>
           </div>
         </div>
 
         {/* Status Indicators & Action */}
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          {/* JWT Auth Indicator Pill */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/30"
-            title="Requisições autenticadas com JSON Web Token (Bearer)"
-          >
-            <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Sessão:</span>
-            <span className="font-semibold">JWT Ativo</span>
-          </div>
-
-          {/* DB Status Badge */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* DB Status Button */}
           <button
             onClick={onOpenDbModal}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
               dbStatus?.isConnectedToMySQL
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
-            title="Clique para configurar o banco de dados MySQL"
+            title="Clique para configurar a conexão com o MySQL"
           >
-            <Database className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">
-              {dbStatus?.isConnectedToMySQL ? 'MySQL Conectado' : 'Modo Relacional (Schema Ativo)'}
+            <Database className="w-3.5 h-3.5 text-blue-400" />
+            <span>
+              {dbStatus?.isConnectedToMySQL ? 'MySQL Conectado' : 'MySQL / Local'}
             </span>
-            <span className="md:hidden">
-              {dbStatus?.isConnectedToMySQL ? 'MySQL' : 'Memória'}
-            </span>
-            <span className="w-2 h-2 rounded-full animate-pulse bg-current" />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                dbStatus?.isConnectedToMySQL ? 'bg-emerald-400' : 'bg-amber-400'
+              }`}
+            />
           </button>
 
           {/* Refresh Button */}
           <button
             onClick={onRefresh}
             className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-            title="Atualizar dados"
+            title="Atualizar dados do sistema"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
-          {/* User Profile Pill & Logout */}
+          {/* User Profile & Logout */}
           {currentUser && (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-blue-400">
-                {currentUser.nome.charAt(0)}
-              </div>
-              <div className="hidden lg:block text-left">
-                <div className="text-xs font-semibold text-slate-200 truncate max-w-[130px]">
+              <div className="hidden sm:block text-right">
+                <div className="text-xs font-medium text-slate-200 truncate max-w-[140px]">
                   {currentUser.nome}
                 </div>
-                <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
                   {currentUser.papeis?.[0]?.nome || 'Usuário'}
                 </div>
               </div>
               <button
                 onClick={onLogout}
-                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition cursor-pointer flex items-center gap-1 text-xs"
-                title="Encerrar sessão JWT"
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-500/10 text-slate-300 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 transition cursor-pointer flex items-center gap-1 text-xs"
+                title="Sair do sistema"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sair</span>
+                <span>Sair</span>
               </button>
             </div>
           )}
@@ -140,15 +125,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
-              {tab.entity && (
-                <span
-                  className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
-                    isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {tab.entity}
-                </span>
-              )}
             </button>
           );
         })}
