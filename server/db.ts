@@ -169,7 +169,7 @@ class MockDatabaseStore {
     this.usuarios = [
       {
         id: 'usr-1',
-        nome: 'Maria Clara Vasconcelos',
+        nome: 'Natalia Gabriele',
         email: 'admin.bpc@recife.pe.gov.br',
         senha: defaultPasswordHash,
         ativo: 1,
@@ -830,26 +830,22 @@ CREATE TABLE IF NOT EXISTS \`indicadores\` (
         }
       }
 
-      // 4. Usuarios
-      const [userRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM usuarios');
-      if (userRows[0]?.cnt === 0) {
-        for (const u of mockDb.usuarios) {
-          await this.pool.query(
-            'INSERT INTO usuarios (id, nome, email, senha, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [u.id, u.nome, u.email, u.senha, u.ativo, formatMySQLDateTime(u.data_criacao), formatMySQLDateTime(u.data_atualizacao)]
-          );
-        }
+      // 4. Usuarios (Garante que os usuários padrão existam e atualiza o nome se necessário)
+      for (const u of mockDb.usuarios) {
+        await this.pool.query(
+          `INSERT INTO usuarios (id, nome, email, senha, ativo, data_criacao, data_atualizacao)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE nome = VALUES(nome), ativo = VALUES(ativo)`,
+          [u.id, u.nome, u.email, u.senha, u.ativo, formatMySQLDateTime(u.data_criacao), formatMySQLDateTime(u.data_atualizacao)]
+        );
       }
 
-      // 5. Usuario - Papel
-      const [upRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM usuario_papel');
-      if (upRows[0]?.cnt === 0) {
-        for (const up of mockDb.usuario_papel) {
-          await this.pool.query(
-            'INSERT IGNORE INTO usuario_papel (usuario_id, papel_id) VALUES (?, ?)',
-            [up.usuario_id, up.papel_id]
-          );
-        }
+      // 5. Usuario - Papel (Garante vínculo do Admin Geral e outros papéis)
+      for (const up of mockDb.usuario_papel) {
+        await this.pool.query(
+          'INSERT IGNORE INTO usuario_papel (usuario_id, papel_id) VALUES (?, ?)',
+          [up.usuario_id, up.papel_id]
+        );
       }
 
       // 6. Beneficiarios BPC

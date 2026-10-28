@@ -8,7 +8,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState<string>('admin.bpc@recife.pe.gov.br');
+  const [email, setEmail] = useState<string>('natalia.gabriele@recife.pe.gov.br');
   const [senha, setSenha] = useState<string>('recife123');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
