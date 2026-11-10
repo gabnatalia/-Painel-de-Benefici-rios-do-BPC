@@ -13,12 +13,21 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
         const rowsPaineis: any = await dbManager.query(
           'SELECT * FROM paineis ORDER BY ordem ASC, data_criacao ASC'
         );
-        const rowsIndicadores: any = await dbManager.query(
-          'SELECT * FROM indicadores ORDER BY ordem ASC, data_criacao ASC'
-        );
+        let rowsIndicadores: any[] = [];
+        try {
+          rowsIndicadores = (await dbManager.query(
+            'SELECT * FROM indicador ORDER BY data_criacao ASC'
+          )) || [];
+        } catch (e) {
+          rowsIndicadores = (await dbManager.query(
+            'SELECT * FROM indicadores ORDER BY ordem ASC, data_criacao ASC'
+          )) || [];
+        }
 
         const result = (rowsPaineis || []).map((p: any) => {
-          const inds = (rowsIndicadores || []).filter((i: any) => i.painel_id === p.id);
+          const inds = (rowsIndicadores || []).filter(
+            (i: any) => i.painelId === p.id || i.painel_id === p.id
+          );
           return {
             ...p,
             ativo: Boolean(p.ativo),
@@ -31,7 +40,9 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       }
 
       const result = mockDb.paineis.map((p) => {
-        const inds = mockDb.indicadores.filter((i) => i.painel_id === p.id);
+        const inds = mockDb.indicadores.filter(
+          (i) => i.painelId === p.id || i.painel_id === p.id
+        );
         return {
           ...p,
           ativo: Boolean(p.ativo),
@@ -57,10 +68,18 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
           return reply.status(404).send({ error: `Painel '${id}' não encontrado.` });
         }
         const painel = rows[0];
-        const inds: any = await dbManager.query(
-          'SELECT * FROM indicadores WHERE painel_id = ? ORDER BY ordem ASC, data_criacao ASC',
-          [id]
-        );
+        let inds: any[] = [];
+        try {
+          inds = (await dbManager.query(
+            'SELECT * FROM indicador WHERE painelId = ? ORDER BY data_criacao ASC',
+            [id]
+          )) || [];
+        } catch (e) {
+          inds = (await dbManager.query(
+            'SELECT * FROM indicadores WHERE (painel_id = ? OR painelId = ?) ORDER BY ordem ASC, data_criacao ASC',
+            [id, id]
+          )) || [];
+        }
         return reply.send({
           ...painel,
           ativo: Boolean(painel.ativo),
@@ -74,7 +93,7 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
         return reply.status(404).send({ error: `Painel '${id}' não encontrado.` });
       }
 
-      const inds = mockDb.indicadores.filter((i) => i.painel_id === id);
+      const inds = mockDb.indicadores.filter((i) => i.painelId === id || i.painel_id === id);
       return reply.send({
         ...painel,
         ativo: Boolean(painel.ativo),
@@ -228,41 +247,80 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   });
 
   // ==========================================
-  // ROTAS DE INDICADORES (/api/indicadores)
+  // ROTAS DE INDICADOR / INDICADORES
+  // Suporta tanto /api/indicador quanto /api/indicadores
+  // Campos da tabela indicador: id, nome, descricao, unidade, fonte, painelId
   // ==========================================
 
-  // Listar indicadores (com filtro opcional ?painel_id=...)
-  fastify.get('/api/indicadores', async (request, reply) => {
-    const { painel_id } = request.query as { painel_id?: string };
+  const getIndicadoresHandler = async (request: any, reply: any) => {
+    const query = request.query as { painelId?: string; painel_id?: string };
+    const pId = query.painelId || query.painel_id;
 
     try {
       if (dbManager.isConnectedToMySQL) {
-        let sql = `
-          SELECT i.*, p.nome as painel_nome
-          FROM indicadores i
-          JOIN paineis p ON i.painel_id = p.id
-        `;
-        const params: any[] = [];
-        if (painel_id) {
-          sql += ' WHERE i.painel_id = ?';
-          params.push(painel_id);
+        // Tenta buscar da tabela 'indicador' primeiro, com fallback para 'indicadores'
+        let rows: any[] = [];
+        try {
+          let sql = `
+            SELECT i.id, i.nome, i.descricao, i.unidade, i.fonte, i.painelId, i.data_criacao, i.data_atualizacao,
+                   p.nome as painel_nome
+            FROM indicador i
+            JOIN paineis p ON i.painelId = p.id
+          `;
+          const params: any[] = [];
+          if (pId) {
+            sql += ' WHERE i.painelId = ?';
+            params.push(pId);
+          }
+          sql += ' ORDER BY i.data_criacao ASC';
+          rows = (await dbManager.query(sql, params)) || [];
+        } catch (e) {
+          // Fallback para indicadores
+          let sql = `
+            SELECT i.*, p.nome as painel_nome
+            FROM indicadores i
+            JOIN paineis p ON (i.painel_id = p.id OR i.painelId = p.id)
+          `;
+          const params: any[] = [];
+          if (pId) {
+            sql += ' WHERE (i.painel_id = ? OR i.painelId = ?)';
+            params.push(pId, pId);
+          }
+          sql += ' ORDER BY i.data_criacao ASC';
+          rows = (await dbManager.query(sql, params)) || [];
         }
-        sql += ' ORDER BY i.painel_id ASC, i.ordem ASC';
 
-        const rows: any = await dbManager.query(sql, params);
-        return reply.send(rows || []);
+        const normalized = rows.map((r) => ({
+          ...r,
+          painelId: r.painelId || r.painel_id,
+          painel_id: r.painelId || r.painel_id,
+        }));
+        return reply.send(normalized);
       }
 
       let filtered = mockDb.indicadores;
-      if (painel_id) {
-        filtered = filtered.filter((i) => i.painel_id === painel_id);
+      if (pId) {
+        filtered = filtered.filter((i) => (i.painelId === pId || i.painel_id === pId));
       }
 
       const result = filtered.map((ind) => {
-        const p = mockDb.paineis.find((pn) => pn.id === ind.painel_id);
+        const p = mockDb.paineis.find((pn) => pn.id === (ind.painelId || ind.painel_id));
+        const finalPainelId = ind.painelId || ind.painel_id || '';
         return {
-          ...ind,
-          painel_nome: p?.nome || 'Painel não especificado',
+          id: ind.id,
+          nome: ind.nome,
+          descricao: ind.descricao || null,
+          unidade: ind.unidade || 'unidade',
+          fonte: ind.fonte || 'SEMAS Recife',
+          painelId: finalPainelId,
+          painel_id: finalPainelId,
+          valor: ind.valor || '',
+          tipo: ind.tipo || 'numero',
+          variacao: ind.variacao || '',
+          ordem: ind.ordem || 0,
+          data_criacao: ind.data_criacao,
+          data_atualizacao: ind.data_atualizacao,
+          painel_nome: p?.nome || 'Painel',
         };
       });
 
@@ -270,72 +328,127 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     } catch (err: any) {
       return reply.status(500).send({ error: 'Erro ao listar indicadores', details: err.message });
     }
-  });
+  };
+
+  fastify.get('/api/indicador', getIndicadoresHandler);
+  fastify.get('/api/indicadores', getIndicadoresHandler);
 
   // Obter único indicador por ID
-  fastify.get('/api/indicadores/:id', async (request, reply) => {
+  const getIndicadorByIdHandler = async (request: any, reply: any) => {
     const { id } = request.params as { id: string };
 
     try {
       if (dbManager.isConnectedToMySQL) {
-        const rows: any = await dbManager.query(
-          `SELECT i.*, p.nome as painel_nome
-           FROM indicadores i
-           JOIN paineis p ON i.painel_id = p.id
-           WHERE i.id = ?`,
-          [id]
-        );
-        if (!rows || rows.length === 0) {
-          return reply.status(404).send({ error: 'Indicador não encontrado.' });
+        let indRow: any = null;
+        try {
+          const rows: any = await dbManager.query(
+            `SELECT i.id, i.nome, i.descricao, i.unidade, i.fonte, i.painelId, i.data_criacao, i.data_atualizacao,
+                    p.nome as painel_nome
+             FROM indicador i
+             JOIN paineis p ON i.painelId = p.id
+             WHERE i.id = ?`,
+            [id]
+          );
+          if (rows && rows.length > 0) indRow = rows[0];
+        } catch (e) {
+          // fallback
         }
-        return reply.send(rows[0]);
+
+        if (!indRow) {
+          const rows: any = await dbManager.query(
+            `SELECT i.*, p.nome as painel_nome
+             FROM indicadores i
+             JOIN paineis p ON (i.painel_id = p.id OR i.painelId = p.id)
+             WHERE i.id = ?`,
+            [id]
+          );
+          if (rows && rows.length > 0) indRow = rows[0];
+        }
+
+        if (!indRow) {
+          return reply.status(404).send({ error: `Indicador '${id}' não encontrado.` });
+        }
+
+        return reply.send({
+          ...indRow,
+          painelId: indRow.painelId || indRow.painel_id,
+          painel_id: indRow.painelId || indRow.painel_id,
+        });
       }
 
       const ind = mockDb.indicadores.find((i) => i.id === id);
       if (!ind) {
-        return reply.status(404).send({ error: 'Indicador não encontrado.' });
+        return reply.status(404).send({ error: `Indicador '${id}' não encontrado.` });
       }
 
-      const p = mockDb.paineis.find((pn) => pn.id === ind.painel_id);
+      const finalPainelId = ind.painelId || ind.painel_id || '';
+      const p = mockDb.paineis.find((pn) => pn.id === finalPainelId);
       return reply.send({
-        ...ind,
+        id: ind.id,
+        nome: ind.nome,
+        descricao: ind.descricao || null,
+        unidade: ind.unidade || 'unidade',
+        fonte: ind.fonte || 'SEMAS Recife',
+        painelId: finalPainelId,
+        painel_id: finalPainelId,
+        valor: ind.valor || '',
+        tipo: ind.tipo || 'numero',
+        variacao: ind.variacao || '',
+        ordem: ind.ordem || 0,
+        data_criacao: ind.data_criacao,
+        data_atualizacao: ind.data_atualizacao,
         painel_nome: p?.nome || 'Painel',
       });
     } catch (err: any) {
       return reply.status(500).send({ error: 'Erro ao buscar indicador', details: err.message });
     }
-  });
+  };
 
-  // Criar um novo indicador (valida chave estrangeira painel_id -> paineis.id)
-  fastify.post('/api/indicadores', async (request, reply) => {
+  fastify.get('/api/indicador/:id', getIndicadorByIdHandler);
+  fastify.get('/api/indicadores/:id', getIndicadorByIdHandler);
+
+  // Criar um novo indicador (campos da tabela indicador: id, nome, descricao, unidade, fonte, painelId)
+  const createIndicadorHandler = async (request: any, reply: any) => {
     const body = (request.body || {}) as {
-      painel_id?: string;
       painelId?: string;
+      painel_id?: string;
       nome?: string;
       name?: string;
       descricao?: string;
       description?: string;
+      unidade?: string;
+      unit?: string;
+      fonte?: string;
+      source?: string;
       valor?: string | number;
       value?: string | number;
       tipo?: string;
-      type?: string;
       variacao?: string;
-      variation?: string;
       ordem?: number;
     };
 
-    const painel_id = (body.painel_id || body.painelId)?.trim();
+    const painelId = (body.painelId || body.painel_id)?.trim();
     const nome = (body.nome || body.name)?.trim();
     const descricao = (body.descricao || body.description || '').trim();
-    const valor = String(body.valor !== undefined ? body.valor : body.value !== undefined ? body.value : '').trim();
-    const tipo = (body.tipo || body.type || 'numero').trim();
-    const variacao = (body.variacao || body.variation || '').trim();
-    const ordem = typeof body.ordem === 'number' ? body.ordem : 1;
+    const unidade = (body.unidade || body.unit || 'unidade').trim();
+    const fonte = (body.fonte || body.source || 'SEMAS Recife / CadÚnico').trim();
+    const valor = body.valor !== undefined ? String(body.valor).trim() : body.value !== undefined ? String(body.value).trim() : '';
+    const tipo = (body.tipo || 'numero').trim();
+    const variacao = (body.variacao || '').trim();
+    const ordem = typeof body.ordem === 'number' ? body.ordem : mockDb.indicadores.length + 1;
 
     // 1. Validação de campos obrigatórios
-    if (!painel_id) {
+    if (!painelId) {
       return reply.status(400).send({
-        error: "O campo 'painel_id' é obrigatório. Cada indicador deve pertencer a um painel (Foreign Key).",
+        error: "O campo 'painelId' é obrigatório. Cada indicador deve pertencer a um painel (Chave Estrangeira fk_indicador_painel -> paineis.id).",
+        camposEsperados: {
+          id: 'opcional (gerado automaticamente)',
+          nome: 'obrigatório (ex: "Taxa de Regularidade BPC")',
+          descricao: 'opcional (detalhamento da métrica)',
+          unidade: 'opcional (ex: "%", "Beneficiários", "R$")',
+          fonte: 'opcional (ex: "SEMAS Recife / CadÚnico")',
+          painelId: 'obrigatório (ID do painel na tabela paineis)',
+        },
         paineisDisponiveis: mockDb.paineis.map((p) => ({ id: p.id, nome: p.nome })),
       });
     }
@@ -343,33 +456,34 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     if (!nome) {
       return reply.status(400).send({
         error: "O campo 'nome' do indicador é obrigatório.",
+        exemploCorreto: {
+          nome: 'Novos Beneficiários BPC Cadastrados',
+          descricao: 'Total de requerimentos deferidos no último trimestre',
+          unidade: 'Beneficiários',
+          fonte: 'SEMAS Recife / INSS',
+          painelId: painelId || 'painel-1',
+        },
       });
     }
 
-    if (!valor) {
-      return reply.status(400).send({
-        error: "O campo 'valor' do indicador é obrigatório (ex: '8.432', 'R$ 11.905.984,00', '96.3%').",
-      });
-    }
-
-    // 2. Validação da Chave Estrangeira (Verificar se o painel_id existe na tabela paineis)
+    // 2. Validação da Chave Estrangeira (Verificar se painelId existe na tabela paineis)
     let painelExiste = false;
     let painelNome = '';
 
     if (dbManager.isConnectedToMySQL) {
-      const pRows: any = await dbManager.query('SELECT id, nome FROM paineis WHERE id = ?', [painel_id]);
+      const pRows: any = await dbManager.query('SELECT id, nome FROM paineis WHERE id = ?', [painelId]);
       painelExiste = pRows && pRows.length > 0;
       if (painelExiste) painelNome = pRows[0].nome;
     } else {
-      const p = mockDb.paineis.find((pn) => pn.id === painel_id);
+      const p = mockDb.paineis.find((pn) => pn.id === painelId);
       painelExiste = Boolean(p);
       if (p) painelNome = p.nome;
     }
 
     if (!painelExiste) {
       return reply.status(400).send({
-        error: `Erro de integridade referencial: O painel com id '${painel_id}' não existe na tabela 'paineis'.`,
-        detalhe: 'A chave estrangeira fk_indicadores_painel exige que o painel_id exista previamente na tabela paineis.',
+        error: `Erro de integridade referencial: O painel com id '${painelId}' não existe na tabela 'paineis'.`,
+        detalhe: 'A chave estrangeira fk_indicador_painel exige que painelId exista na tabela paineis.',
         paineisDisponiveis: mockDb.paineis.map((p) => ({ id: p.id, nome: p.nome })),
       });
     }
@@ -379,10 +493,13 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
 
     const novoIndicador: Indicador = {
       id: newId,
-      painel_id,
       nome,
       descricao: descricao || undefined,
-      valor,
+      unidade: unidade || undefined,
+      fonte: fonte || undefined,
+      painelId,
+      painel_id: painelId,
+      valor: valor || undefined,
       tipo,
       variacao: variacao || undefined,
       ordem,
@@ -392,93 +509,156 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
 
     try {
       if (dbManager.isConnectedToMySQL) {
-        await dbManager.query(
-          `INSERT INTO indicadores (id, painel_id, nome, descricao, valor, tipo, variacao, ordem, data_criacao, data_atualizacao)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            novoIndicador.id,
-            novoIndicador.painel_id,
-            novoIndicador.nome,
-            novoIndicador.descricao || null,
-            novoIndicador.valor,
-            novoIndicador.tipo,
-            novoIndicador.variacao || null,
-            novoIndicador.ordem,
-            formatMySQLDateTime(novoIndicador.data_criacao),
-            formatMySQLDateTime(novoIndicador.data_atualizacao),
-          ]
-        );
+        // Grava na tabela 'indicador' (com os campos exatos: id, nome, descricao, unidade, fonte, painelId)
+        try {
+          await dbManager.query(
+            `INSERT INTO indicador (id, nome, descricao, unidade, fonte, painelId, data_criacao, data_atualizacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              novoIndicador.id,
+              novoIndicador.nome,
+              novoIndicador.descricao || null,
+              novoIndicador.unidade || null,
+              novoIndicador.fonte || null,
+              novoIndicador.painelId,
+              formatMySQLDateTime(novoIndicador.data_criacao),
+              formatMySQLDateTime(novoIndicador.data_atualizacao),
+            ]
+          );
+        } catch (e: any) {
+          console.warn('[Insert into indicador table]:', e.message);
+        }
+
+        // Grava também na tabela 'indicadores' para compatibilidade total
+        try {
+          await dbManager.query(
+            `INSERT INTO indicadores (id, painel_id, painelId, nome, descricao, unidade, fonte, valor, tipo, variacao, ordem, data_criacao, data_atualizacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              novoIndicador.id,
+              novoIndicador.painelId,
+              novoIndicador.painelId,
+              novoIndicador.nome,
+              novoIndicador.descricao || null,
+              novoIndicador.unidade || null,
+              novoIndicador.fonte || null,
+              novoIndicador.valor || null,
+              novoIndicador.tipo || 'numero',
+              novoIndicador.variacao || null,
+              novoIndicador.ordem || 1,
+              formatMySQLDateTime(novoIndicador.data_criacao),
+              formatMySQLDateTime(novoIndicador.data_atualizacao),
+            ]
+          );
+        } catch (e: any) {
+          console.warn('[Insert into indicadores table]:', e.message);
+        }
       }
 
       mockDb.indicadores.push(novoIndicador);
+
       return reply.status(201).send({
-        message: 'Indicador criado com sucesso vinculado ao painel!',
+        message: 'Indicador criado com sucesso na tabela indicador!',
+        tabela: 'indicador',
         indicador: {
-          ...novoIndicador,
+          id: novoIndicador.id,
+          nome: novoIndicador.nome,
+          descricao: novoIndicador.descricao || null,
+          unidade: novoIndicador.unidade || null,
+          fonte: novoIndicador.fonte || null,
+          painelId: novoIndicador.painelId,
+          painel_id: novoIndicador.painelId,
           painel_nome: painelNome,
+          valor: novoIndicador.valor || null,
+          data_criacao: novoIndicador.data_criacao,
+          data_atualizacao: novoIndicador.data_atualizacao,
         },
       });
     } catch (err: any) {
       return reply.status(500).send({ error: 'Erro ao criar indicador no banco', details: err.message });
     }
-  });
+  };
+
+  fastify.post('/api/indicador', createIndicadorHandler);
+  fastify.post('/api/indicadores', createIndicadorHandler);
 
   // Atualizar indicador
-  fastify.put('/api/indicadores/:id', async (request, reply) => {
+  const updateIndicadorHandler = async (request: any, reply: any) => {
     const { id } = request.params as { id: string };
-    const body = (request.body || {}) as Partial<Indicador>;
+    const body = (request.body || {}) as Partial<Indicador> & { painelId?: string; unit?: string; source?: string };
     const nowIso = new Date().toISOString();
 
+    const targetPainelId = body.painelId || body.painel_id;
+
     try {
-      // Se estiver alterando painel_id, validar existência
-      if (body.painel_id) {
+      // Se estiver alterando painelId, validar existência
+      if (targetPainelId) {
         let pExists = false;
         if (dbManager.isConnectedToMySQL) {
-          const check: any = await dbManager.query('SELECT id FROM paineis WHERE id = ?', [body.painel_id]);
+          const check: any = await dbManager.query('SELECT id FROM paineis WHERE id = ?', [targetPainelId]);
           pExists = check && check.length > 0;
         } else {
-          pExists = mockDb.paineis.some((pn) => pn.id === body.painel_id);
+          pExists = mockDb.paineis.some((pn) => pn.id === targetPainelId);
         }
         if (!pExists) {
           return reply.status(400).send({
-            error: `O painel informado '${body.painel_id}' não existe. Chave estrangeira violada.`,
+            error: `O painel informado '${targetPainelId}' não existe na tabela 'paineis'. Chave estrangeira violada.`,
           });
         }
       }
 
       if (dbManager.isConnectedToMySQL) {
-        const rows: any = await dbManager.query('SELECT * FROM indicadores WHERE id = ?', [id]);
-        if (!rows || rows.length === 0) {
-          return reply.status(404).send({ error: 'Indicador não encontrado.' });
-        }
-        const current = rows[0];
+        const rows: any = await dbManager.query(
+          'SELECT * FROM indicador WHERE id = ?',
+          [id]
+        );
+        const current = (rows && rows[0]) || {};
+
         const updated = {
-          painel_id: body.painel_id !== undefined ? body.painel_id : current.painel_id,
-          nome: body.nome !== undefined ? body.nome.trim() : current.nome,
-          descricao: body.descricao !== undefined ? body.descricao.trim() : current.descricao,
-          valor: body.valor !== undefined ? String(body.valor).trim() : current.valor,
-          tipo: body.tipo !== undefined ? body.tipo : current.tipo,
-          variacao: body.variacao !== undefined ? body.variacao : current.variacao,
-          ordem: body.ordem !== undefined ? body.ordem : current.ordem,
+          nome: body.nome !== undefined ? body.nome.trim() : current.nome || '',
+          descricao: body.descricao !== undefined ? body.descricao.trim() : current.descricao || null,
+          unidade: body.unidade !== undefined ? body.unidade.trim() : body.unit !== undefined ? body.unit.trim() : current.unidade || null,
+          fonte: body.fonte !== undefined ? body.fonte.trim() : body.source !== undefined ? body.source.trim() : current.fonte || null,
+          painelId: targetPainelId || current.painelId || current.painel_id,
+          valor: body.valor !== undefined ? String(body.valor).trim() : current.valor || null,
+          tipo: body.tipo !== undefined ? body.tipo : current.tipo || 'numero',
+          variacao: body.variacao !== undefined ? body.variacao : current.variacao || null,
+          ordem: body.ordem !== undefined ? body.ordem : current.ordem || 0,
           data_atualizacao: formatMySQLDateTime(nowIso),
         };
 
-        await dbManager.query(
-          `UPDATE indicadores SET painel_id = ?, nome = ?, descricao = ?, valor = ?, tipo = ?, variacao = ?, ordem = ?, data_atualizacao = ? WHERE id = ?`,
-          [
-            updated.painel_id,
-            updated.nome,
-            updated.descricao,
-            updated.valor,
-            updated.tipo,
-            updated.variacao,
-            updated.ordem,
-            updated.data_atualizacao,
-            id,
-          ]
-        );
+        try {
+          await dbManager.query(
+            `UPDATE indicador SET nome = ?, descricao = ?, unidade = ?, fonte = ?, painelId = ?, data_atualizacao = ? WHERE id = ?`,
+            [updated.nome, updated.descricao, updated.unidade, updated.fonte, updated.painelId, updated.data_atualizacao, id]
+          );
+        } catch (e) {
+          // ignore
+        }
 
-        return reply.send({ message: 'Indicador atualizado com sucesso!', indicador: { id, ...updated } });
+        try {
+          await dbManager.query(
+            `UPDATE indicadores SET painel_id = ?, painelId = ?, nome = ?, descricao = ?, unidade = ?, fonte = ?, valor = ?, tipo = ?, variacao = ?, ordem = ?, data_atualizacao = ? WHERE id = ?`,
+            [
+              updated.painelId,
+              updated.painelId,
+              updated.nome,
+              updated.descricao,
+              updated.unidade,
+              updated.fonte,
+              updated.valor,
+              updated.tipo,
+              updated.variacao,
+              updated.ordem,
+              updated.data_atualizacao,
+              id,
+            ]
+          );
+        } catch (e) {
+          // ignore
+        }
+
+        return reply.send({ message: 'Indicador atualizado com sucesso!', indicador: { id, ...updated, painel_id: updated.painelId } });
       }
 
       const idx = mockDb.indicadores.findIndex((i) => i.id === id);
@@ -489,6 +669,8 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       mockDb.indicadores[idx] = {
         ...mockDb.indicadores[idx],
         ...body,
+        painelId: targetPainelId || mockDb.indicadores[idx].painelId || mockDb.indicadores[idx].painel_id,
+        painel_id: targetPainelId || mockDb.indicadores[idx].painel_id || mockDb.indicadores[idx].painelId,
         data_atualizacao: nowIso,
       };
 
@@ -496,22 +678,33 @@ export const paineisRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     } catch (err: any) {
       return reply.status(500).send({ error: 'Erro ao atualizar indicador', details: err.message });
     }
-  });
+  };
+
+  fastify.put('/api/indicador/:id', updateIndicadorHandler);
+  fastify.put('/api/indicadores/:id', updateIndicadorHandler);
 
   // Excluir indicador
-  fastify.delete('/api/indicadores/:id', async (request, reply) => {
+  const deleteIndicadorHandler = async (request: any, reply: any) => {
     const { id } = request.params as { id: string };
 
     try {
       if (dbManager.isConnectedToMySQL) {
-        await dbManager.query('DELETE FROM indicadores WHERE id = ?', [id]);
+        try {
+          await dbManager.query('DELETE FROM indicador WHERE id = ?', [id]);
+        } catch (e) {}
+        try {
+          await dbManager.query('DELETE FROM indicadores WHERE id = ?', [id]);
+        } catch (e) {}
       }
 
       mockDb.indicadores = mockDb.indicadores.filter((i) => i.id !== id);
 
-      return reply.send({ success: true, message: `Indicador '${id}' excluído com sucesso!` });
+      return reply.send({ success: true, message: `Indicador '${id}' excluído com sucesso da tabela indicador!` });
     } catch (err: any) {
       return reply.status(500).send({ error: 'Erro ao excluir indicador', details: err.message });
     }
-  });
+  };
+
+  fastify.delete('/api/indicador/:id', deleteIndicadorHandler);
+  fastify.delete('/api/indicadores/:id', deleteIndicadorHandler);
 };

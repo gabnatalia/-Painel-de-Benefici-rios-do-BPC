@@ -90,15 +90,18 @@ export interface Painel {
 
 export interface Indicador {
   id: string;
-  painel_id: string;
   nome: string;
   descricao?: string;
-  valor: string;
-  tipo: string; // 'numero' | 'moeda' | 'percentual' | 'texto'
+  unidade?: string;
+  fonte?: string;
+  painelId: string;
+  painel_id?: string;
+  valor?: string;
+  tipo?: string; // 'numero' | 'moeda' | 'percentual' | 'texto'
   variacao?: string;
-  ordem: number;
-  data_criacao: string;
-  data_atualizacao: string;
+  ordem?: number;
+  data_criacao?: string;
+  data_atualizacao?: string;
 }
 
 // In-Memory Storage for immediate preview when MySQL server is not configured/reachable
@@ -389,14 +392,17 @@ class MockDatabaseStore {
       }
     ];
 
-    // 8. Indicadores (Métricas com FK painel_id -> paineis.id)
+    // 8. Indicadores (Campos da tabela: id, nome, descricao, unidade, fonte, painelId)
     this.indicadores = [
       // Indicadores do Painel 1 (Executivo)
       {
         id: 'ind-1',
-        painel_id: 'painel-1',
         nome: 'Beneficiários Ativos',
         descricao: 'Total de cidadãos recifenses com benefício BPC regularizado e ativo',
+        unidade: 'Pessoas',
+        fonte: 'CadÚnico / SEMAS Recife',
+        painelId: 'painel-1',
+        painel_id: 'painel-1',
         valor: '8.432',
         tipo: 'numero',
         variacao: '+3.8% este mês',
@@ -406,9 +412,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-2',
-        painel_id: 'painel-1',
         nome: 'Injeção Econômica Mensal',
         descricao: 'Recursos federais injetados mensalmente na economia local do Recife',
+        unidade: 'R$',
+        fonte: 'MDS / Dataprev',
+        painelId: 'painel-1',
+        painel_id: 'painel-1',
         valor: 'R$ 11.905.984,00',
         tipo: 'moeda',
         variacao: 'R$ 1.412,00 por titular',
@@ -418,9 +427,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-3',
-        painel_id: 'painel-1',
         nome: 'Idosos Beneficiários (65+)',
         descricao: 'Idosos em situação de extrema vulnerabilidade atendidos no Recife',
+        unidade: 'Pessoas',
+        fonte: 'CadÚnico / INSS',
+        painelId: 'painel-1',
+        painel_id: 'painel-1',
         valor: '4.890',
         tipo: 'numero',
         variacao: '58% do total',
@@ -430,9 +442,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-4',
-        painel_id: 'painel-1',
         nome: 'Pessoas com Deficiência (PCD)',
         descricao: 'PCDs amparados pelo BPC com laudo social e perícia validados',
+        unidade: 'Pessoas',
+        fonte: 'Perícia Médica Federal / SEMAS',
+        painelId: 'painel-1',
+        painel_id: 'painel-1',
         valor: '3.542',
         tipo: 'numero',
         variacao: '42% do total',
@@ -444,9 +459,12 @@ class MockDatabaseStore {
       // Indicadores do Painel 2 (Territorial RPA)
       {
         id: 'ind-5',
-        painel_id: 'painel-2',
         nome: 'Maior Cobertura: RPA 3 (Norte)',
         descricao: 'Alto José do Pinho, Casa Amarela, Vasco da Gama e adjacências',
+        unidade: 'Beneficiários',
+        fonte: 'Mapeamento Territorial SEMAS',
+        painelId: 'painel-2',
+        painel_id: 'painel-2',
         valor: '2.140',
         tipo: 'numero',
         variacao: '25.4% do município',
@@ -456,9 +474,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-6',
-        painel_id: 'painel-2',
         nome: 'Alta Demanda: RPA 6 (Sul)',
         descricao: 'Ibura, Jordão, Pina e Boa Viagem',
+        unidade: 'Beneficiários',
+        fonte: 'Mapeamento Territorial SEMAS',
+        painelId: 'painel-2',
+        painel_id: 'painel-2',
         valor: '1.980',
         tipo: 'numero',
         variacao: '23.5% do município',
@@ -468,9 +489,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-7',
-        painel_id: 'painel-2',
         nome: 'CRAS de Maior Referência',
         descricao: 'CRAS Campina do Barreto / RPA 2 com maior número de titulares',
+        unidade: 'Cadastros',
+        fonte: 'Rede SUAS Recife',
+        painelId: 'painel-2',
+        painel_id: 'painel-2',
         valor: '890 cadastros',
         tipo: 'texto',
         variacao: 'Capacidade máxima de atendimento',
@@ -482,9 +506,12 @@ class MockDatabaseStore {
       // Indicadores do Painel 3 (Auditoria)
       {
         id: 'ind-8',
-        painel_id: 'painel-3',
         nome: 'Cadastros em Revisão',
         descricao: 'Pendentes de atualização de dados junto ao CRAS ou CadÚnico',
+        unidade: 'Famílias',
+        fonte: 'Auditoria CadÚnico',
+        painelId: 'painel-3',
+        painel_id: 'painel-3',
         valor: '312',
         tipo: 'numero',
         variacao: '3.7% do total',
@@ -494,9 +521,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-9',
-        painel_id: 'painel-3',
         nome: 'Benefícios Bloqueados/Suspensos',
         descricao: 'Por inconformidade de renda ou pendência cadastral',
+        unidade: 'Benefícios',
+        fonte: 'Sistema de Benefícios INSS',
+        painelId: 'painel-3',
+        painel_id: 'painel-3',
         valor: '98',
         tipo: 'numero',
         variacao: '-12 regularizados nesta semana',
@@ -506,9 +536,12 @@ class MockDatabaseStore {
       },
       {
         id: 'ind-10',
-        painel_id: 'painel-3',
         nome: 'Índice de Regularidade Social',
         descricao: 'Percentual de beneficiários com dados 100% em dia no município',
+        unidade: '%',
+        fonte: 'Gestão da Informação SEMAS',
+        painelId: 'painel-3',
+        painel_id: 'painel-3',
         valor: '96.3%',
         tipo: 'percentual',
         variacao: '+0.5% vs trimestre anterior',
@@ -643,21 +676,38 @@ CREATE TABLE IF NOT EXISTS \`paineis\` (
   INDEX \`idx_paineis_ativo\` (\`ativo\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 8. Tabela: indicadores (Indicadores com Chave Estrangeira painel_id -> paineis.id)
+-- 8. Tabela: indicador (Campos: id, nome, descricao, unidade, fonte, painelId)
+CREATE TABLE IF NOT EXISTS \`indicador\` (
+  \`id\` VARCHAR(36) NOT NULL,
+  \`nome\` VARCHAR(255) NOT NULL,
+  \`descricao\` TEXT NULL,
+  \`unidade\` VARCHAR(100) NULL,
+  \`fonte\` VARCHAR(255) NULL,
+  \`painelId\` VARCHAR(36) NOT NULL,
+  \`data_criacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`data_atualizacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  INDEX \`idx_indicador_painelId\` (\`painelId\`),
+  CONSTRAINT \`fk_indicador_painel\` FOREIGN KEY (\`painelId\`) REFERENCES \`paineis\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Compatibilidade: Tabela indicadores
 CREATE TABLE IF NOT EXISTS \`indicadores\` (
   \`id\` VARCHAR(36) NOT NULL,
   \`painel_id\` VARCHAR(36) NOT NULL,
+  \`painelId\` VARCHAR(36) NULL,
   \`nome\` VARCHAR(255) NOT NULL,
   \`descricao\` TEXT NULL,
-  \`valor\` VARCHAR(100) NOT NULL,
+  \`unidade\` VARCHAR(100) NULL,
+  \`fonte\` VARCHAR(255) NULL,
+  \`valor\` VARCHAR(100) NULL,
   \`tipo\` VARCHAR(50) NOT NULL DEFAULT 'numero',
   \`variacao\` VARCHAR(50) NULL,
   \`ordem\` INT NOT NULL DEFAULT 0,
   \`data_criacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   \`data_atualizacao\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (\`id\`),
-  INDEX \`idx_indicadores_painel\` (\`painel_id\`),
-  CONSTRAINT \`fk_indicadores_painel\` FOREIGN KEY (\`painel_id\`) REFERENCES \`paineis\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+  INDEX \`idx_indicadores_painel\` (\`painel_id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
   }
@@ -769,19 +819,34 @@ CREATE TABLE IF NOT EXISTS \`indicadores\` (
         data_criacao DATETIME NOT NULL,
         data_atualizacao DATETIME NOT NULL
       )`,
+      `CREATE TABLE IF NOT EXISTS indicador (
+        id VARCHAR(36) PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        unidade VARCHAR(100),
+        fonte VARCHAR(255),
+        painelId VARCHAR(36) NOT NULL,
+        data_criacao DATETIME NOT NULL,
+        data_atualizacao DATETIME NOT NULL,
+        INDEX idx_indicador_painelId (painelId),
+        CONSTRAINT fk_indicador_painel FOREIGN KEY (painelId) REFERENCES paineis (id) ON DELETE CASCADE ON UPDATE CASCADE
+      )`,
       `CREATE TABLE IF NOT EXISTS indicadores (
         id VARCHAR(36) PRIMARY KEY,
         painel_id VARCHAR(36) NOT NULL,
+        painelId VARCHAR(36),
         nome VARCHAR(255) NOT NULL,
         descricao TEXT,
-        valor VARCHAR(100) NOT NULL,
+        unidade VARCHAR(100),
+        fonte VARCHAR(255),
+        valor VARCHAR(100) NULL,
         tipo VARCHAR(50) NOT NULL DEFAULT 'numero',
         variacao VARCHAR(50),
         ordem INT NOT NULL DEFAULT 0,
         data_criacao DATETIME NOT NULL,
         data_atualizacao DATETIME NOT NULL,
         INDEX idx_indicadores_painel (painel_id),
-        CONSTRAINT fk_indicadores_painel FOREIGN KEY (painel_id) REFERENCES paineis (id) ON DELETE CASCADE ON UPDATE CASCADE
+        INDEX idx_indicadores_painelId (painelId)
       )`
     ];
 
@@ -790,6 +855,23 @@ CREATE TABLE IF NOT EXISTS \`indicadores\` (
         await this.pool.query(sql);
       } catch (e) {
         console.warn('Erro ao criar tabela MySQL:', e);
+      }
+    }
+
+    // Migrations seguras caso a tabela já existisse no MySQL
+    const migrations = [
+      'ALTER TABLE indicador ADD COLUMN unidade VARCHAR(100) NULL',
+      'ALTER TABLE indicador ADD COLUMN fonte VARCHAR(255) NULL',
+      'ALTER TABLE indicador ADD COLUMN painelId VARCHAR(36) NULL',
+      'ALTER TABLE indicadores ADD COLUMN unidade VARCHAR(100) NULL',
+      'ALTER TABLE indicadores ADD COLUMN fonte VARCHAR(255) NULL',
+      'ALTER TABLE indicadores ADD COLUMN painelId VARCHAR(36) NULL',
+    ];
+    for (const mig of migrations) {
+      try {
+        await this.pool.query(mig);
+      } catch (e) {
+        // coluna já existente
       }
     }
   }
@@ -886,14 +968,64 @@ CREATE TABLE IF NOT EXISTS \`indicadores\` (
         }
       }
 
-      // 8. Indicadores (com chave estrangeira fk_indicadores_painel)
-      const [indRows]: any = await this.pool.query('SELECT COUNT(*) as cnt FROM indicadores');
-      if (indRows[0]?.cnt === 0) {
-        for (const ind of mockDb.indicadores) {
+      // 8. Tabela Indicador (campos: id, nome, descricao, unidade, fonte, painelId)
+      for (const ind of mockDb.indicadores) {
+        const pId = ind.painelId || ind.painel_id;
+        try {
           await this.pool.query(
-            'INSERT INTO indicadores (id, painel_id, nome, descricao, valor, tipo, variacao, ordem, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [ind.id, ind.painel_id, ind.nome, ind.descricao || null, ind.valor, ind.tipo || 'numero', ind.variacao || null, ind.ordem || 0, formatMySQLDateTime(ind.data_criacao), formatMySQLDateTime(ind.data_atualizacao)]
+            `INSERT INTO indicador (id, nome, descricao, unidade, fonte, painelId, data_criacao, data_atualizacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               nome = VALUES(nome),
+               descricao = VALUES(descricao),
+               unidade = VALUES(unidade),
+               fonte = VALUES(fonte),
+               painelId = VALUES(painelId),
+               data_atualizacao = VALUES(data_atualizacao)`,
+            [
+              ind.id,
+              ind.nome,
+              ind.descricao || null,
+              ind.unidade || 'unidade',
+              ind.fonte || 'Prefeitura do Recife',
+              pId,
+              formatMySQLDateTime(ind.data_criacao),
+              formatMySQLDateTime(ind.data_atualizacao),
+            ]
           );
+        } catch (e) {
+          // ignore if table not created
+        }
+
+        try {
+          await this.pool.query(
+            `INSERT INTO indicadores (id, painel_id, painelId, nome, descricao, unidade, fonte, valor, tipo, variacao, ordem, data_criacao, data_atualizacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               nome = VALUES(nome),
+               descricao = VALUES(descricao),
+               unidade = VALUES(unidade),
+               fonte = VALUES(fonte),
+               painelId = VALUES(painelId),
+               painel_id = VALUES(painel_id)`,
+            [
+              ind.id,
+              pId,
+              pId,
+              ind.nome,
+              ind.descricao || null,
+              ind.unidade || 'unidade',
+              ind.fonte || 'Prefeitura do Recife',
+              ind.valor || null,
+              ind.tipo || 'numero',
+              ind.variacao || null,
+              ind.ordem || 0,
+              formatMySQLDateTime(ind.data_criacao),
+              formatMySQLDateTime(ind.data_atualizacao),
+            ]
+          );
+        } catch (e) {
+          // ignore
         }
       }
       console.log('[MySQL] Tabelas sincronizadas e populadas com os dados do Recife!');

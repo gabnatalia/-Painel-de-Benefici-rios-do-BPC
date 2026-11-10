@@ -12,6 +12,7 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
       papel_permissao: mockDb.papel_permissao.length,
       beneficiarios_bpc: mockDb.beneficiarios.length,
       paineis: mockDb.paineis.length,
+      indicador: mockDb.indicadores.length,
       indicadores: mockDb.indicadores.length,
     };
 
@@ -24,7 +25,14 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         const [pp]: any = await dbManager.query('SELECT COUNT(*) as c FROM papel_permissao');
         const [b]: any = await dbManager.query('SELECT COUNT(*) as c FROM beneficiarios_bpc');
         const [pn]: any = await dbManager.query('SELECT COUNT(*) as c FROM paineis');
-        const [ind]: any = await dbManager.query('SELECT COUNT(*) as c FROM indicadores');
+        let indCount = 0;
+        try {
+          const [ind]: any = await dbManager.query('SELECT COUNT(*) as c FROM indicador');
+          indCount = Number(ind?.c || 0);
+        } catch (e) {
+          const [ind]: any = await dbManager.query('SELECT COUNT(*) as c FROM indicadores');
+          indCount = Number(ind?.c || 0);
+        }
 
         counts = {
           usuarios: Number(u?.c ?? counts.usuarios),
@@ -34,7 +42,8 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           papel_permissao: Number(pp?.c ?? counts.papel_permissao),
           beneficiarios_bpc: Number(b?.c ?? counts.beneficiarios_bpc),
           paineis: Number(pn?.c ?? counts.paineis),
-          indicadores: Number(ind?.c ?? counts.indicadores),
+          indicador: indCount,
+          indicadores: indCount,
         };
       } catch (e) {
         // use fallback mock counts
@@ -96,9 +105,14 @@ export const databaseRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           colunas: ['id (PK)', 'nome', 'descricao', 'icone', 'ativo (BOOLEAN)', 'ordem (INT)', 'data_criacao', 'data_atualizacao'],
         },
         {
+          name: 'indicador',
+          descricao: 'Tabela de indicadores vinculados ao painel via Chave Estrangeira painelId -> paineis.id (ON DELETE CASCADE)',
+          colunas: ['id (PK)', 'nome', 'descricao', 'unidade', 'fonte', 'painelId (FK -> paineis.id ON DELETE CASCADE)', 'data_criacao', 'data_atualizacao'],
+        },
+        {
           name: 'indicadores',
-          descricao: 'Métricas e indicadores vinculados a um painel via Chave Estrangeira (1:N)',
-          colunas: ['id (PK)', 'painel_id (FK -> paineis.id ON DELETE CASCADE)', 'nome', 'descricao', 'valor', 'tipo', 'variacao', 'ordem (INT)', 'data_criacao', 'data_atualizacao'],
+          descricao: 'Visualização e compatibilidade estendida de métricas vinculadas a painéis',
+          colunas: ['id (PK)', 'painelId (FK)', 'painel_id (FK)', 'nome', 'descricao', 'unidade', 'fonte', 'valor', 'tipo', 'variacao', 'ordem (INT)', 'data_criacao', 'data_atualizacao'],
         },
       ],
     });

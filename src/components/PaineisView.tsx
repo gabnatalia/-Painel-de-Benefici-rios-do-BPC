@@ -34,13 +34,15 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
   const [novoPainelDesc, setNovoPainelDesc] = useState('');
   const [novoPainelIcone, setNovoPainelIcone] = useState('LayoutDashboard');
 
-  // Modal / Form state for Novo Indicador
+  // Modal / Form state for Novo Indicador (campos: id, nome, descricao, unidade, fonte, painelId)
   const [showIndicadorModal, setShowIndicadorModal] = useState(false);
   const [novoIndPainelId, setNovoIndPainelId] = useState('');
   const [novoIndNome, setNovoIndNome] = useState('');
+  const [novoIndDesc, setNovoIndDesc] = useState('');
+  const [novoIndUnidade, setNovoIndUnidade] = useState('');
+  const [novoIndFonte, setNovoIndFonte] = useState('');
   const [novoIndValor, setNovoIndValor] = useState('');
   const [novoIndTipo, setNovoIndTipo] = useState('numero');
-  const [novoIndDesc, setNovoIndDesc] = useState('');
   const [novoIndVariacao, setNovoIndVariacao] = useState('');
 
   const loadData = async () => {
@@ -93,26 +95,30 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
 
   const handleCreateIndicador = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novoIndPainelId || !novoIndNome.trim() || !novoIndValor.trim()) return;
+    if (!novoIndPainelId || !novoIndNome.trim()) return;
 
     try {
       await api.createIndicador({
-        painel_id: novoIndPainelId,
+        painelId: novoIndPainelId,
         nome: novoIndNome.trim(),
-        valor: novoIndValor.trim(),
-        tipo: novoIndTipo,
         descricao: novoIndDesc.trim() || undefined,
+        unidade: novoIndUnidade.trim() || undefined,
+        fonte: novoIndFonte.trim() || undefined,
+        valor: novoIndValor.trim() || undefined,
+        tipo: novoIndTipo,
         variacao: novoIndVariacao.trim() || undefined,
       });
 
       setFeedbackMsg({
         type: 'success',
-        text: `Indicador "${novoIndNome}" vinculado com chave estrangeira ao painel com sucesso!`,
+        text: `Indicador "${novoIndNome}" criado na tabela 'indicador' (painelId: ${novoIndPainelId})!`,
       });
       setShowIndicadorModal(false);
       setNovoIndNome('');
-      setNovoIndValor('');
       setNovoIndDesc('');
+      setNovoIndUnidade('');
+      setNovoIndFonte('');
+      setNovoIndValor('');
       setNovoIndVariacao('');
       loadData();
       if (onRefreshParent) onRefreshParent();
@@ -375,7 +381,7 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <span className="text-xs font-medium text-slate-400 line-clamp-1" title={ind.nome}>
+                              <span className="text-xs font-semibold text-slate-200 line-clamp-1" title={ind.nome}>
                                 {ind.nome}
                               </span>
                               <button
@@ -387,15 +393,30 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                               </button>
                             </div>
 
-                            <div className="mt-2 text-xl font-black text-white tracking-tight">
-                              {ind.valor}
-                            </div>
+                            {ind.valor && (
+                              <div className="mt-2 text-xl font-black text-white tracking-tight">
+                                {ind.valor}
+                              </div>
+                            )}
 
                             {ind.descricao && (
                               <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
                                 {ind.descricao}
                               </p>
                             )}
+
+                            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                              {ind.unidade && (
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                  Unidade: {ind.unidade}
+                                </span>
+                              )}
+                              {ind.fonte && (
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 truncate max-w-full" title={ind.fonte}>
+                                  Fonte: {ind.fonte}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
@@ -405,9 +426,11 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                                 {ind.variacao}
                               </span>
                             ) : (
-                              <span className="text-slate-500 font-mono">tipo: {ind.tipo}</span>
+                              <span className="font-mono text-slate-500 text-[9px]">{ind.id}</span>
                             )}
-                            <span className="font-mono text-slate-500 text-[9px]">{ind.id}</span>
+                            <span className="font-mono text-slate-400 text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                              painelId: {ind.painelId || ind.painel_id}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -494,18 +517,26 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
       )}
 
       {/* Modal: Novo Indicador (Chave Estrangeira) */}
+      {/* Modal: Novo Indicador */}
       {showIndicadorModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-1">Cadastrar Indicador (Métrica)</h3>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-base font-bold text-white">Cadastrar Novo Indicador</h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                tabela: indicador
+              </span>
+            </div>
             <p className="text-xs text-slate-400 mb-4">
-              Cria um registro na tabela <span className="font-mono text-emerald-400">indicadores</span> com a Chave Estrangeira <span className="font-mono text-blue-400">painel_id</span>.
+              Campos da tabela: <span className="font-mono text-emerald-400">id, nome, descricao, unidade, fonte, painelId</span>
             </p>
 
-            <form onSubmit={handleCreateIndicador} className="space-y-4">
+            <form onSubmit={handleCreateIndicador} className="space-y-3.5">
+              {/* Chave Estrangeira: painelId */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Painel Associado (Foreign Key: painel_id) *
+                <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Painel Vinculado (painelId - Chave Estrangeira) *</span>
+                  <span className="text-[10px] font-mono text-emerald-400">FK → paineis.id</span>
                 </label>
                 <select
                   required
@@ -520,64 +551,90 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1 font-mono">
-                  CONSTRAINT fk_indicadores_painel FOREIGN KEY (painel_id) REFERENCES paineis (id)
+                  CONSTRAINT fk_indicador_painel FOREIGN KEY (painelId) REFERENCES paineis (id) ON DELETE CASCADE
                 </p>
               </div>
 
+              {/* Nome do Indicador */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Nome do Indicador (nome) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Novos Beneficiários Cadastrados no Mês"
+                  value={novoIndNome}
+                  onChange={(e) => setNovoIndNome(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Unidade & Fonte */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Nome da Métrica *
+                    Unidade de Medida (unidade)
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="Ex: Novos Beneficiários no Mês"
-                    value={novoIndNome}
-                    onChange={(e) => setNovoIndNome(e.target.value)}
+                    placeholder="Ex: Beneficiários, %, R$, Famílias"
+                    value={novoIndUnidade}
+                    onChange={(e) => setNovoIndUnidade(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Valor *
+                    Fonte dos Dados (fonte)
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="Ex: 142 ou R$ 200.504,00"
+                    placeholder="Ex: SEMAS Recife / CadÚnico"
+                    value={novoIndFonte}
+                    onChange={(e) => setNovoIndFonte(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Descrição Detalhada */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Descrição (descricao)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Explicação da métrica, metodologia ou objetivo"
+                  value={novoIndDesc}
+                  onChange={(e) => setNovoIndDesc(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Valor e Variação Opcionais */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-800/60">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Valor Atual (valor - opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 8.432 ou 96.3%"
                     value={novoIndValor}
                     onChange={(e) => setNovoIndValor(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Tipo de Dado
-                  </label>
-                  <select
-                    value={novoIndTipo}
-                    onChange={(e) => setNovoIndTipo(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="numero">Número Inteiro / Decimal</option>
-                    <option value="moeda">Moeda (R$)</option>
-                    <option value="percentual">Percentual (%)</option>
-                    <option value="texto">Texto Informativo</option>
-                  </select>
-                </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Variação / Comparativo
+                    Variação (variacao - opcional)
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: +5.2% vs mês anterior"
+                    placeholder="Ex: +4.2% vs mês anterior"
                     value={novoIndVariacao}
                     onChange={(e) => setNovoIndVariacao(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
@@ -585,20 +642,7 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Descrição Detalhada
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Explicação do cálculo ou origem dos dados"
-                  value={novoIndDesc}
-                  onChange={(e) => setNovoIndDesc(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowIndicadorModal(false)}
@@ -610,7 +654,7 @@ export const PaineisView: React.FC<PaineisViewProps> = ({ onRefreshParent }) => 
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/30 transition cursor-pointer"
                 >
-                  Criar Indicador
+                  Salvar na Tabela Indicador
                 </button>
               </div>
             </form>

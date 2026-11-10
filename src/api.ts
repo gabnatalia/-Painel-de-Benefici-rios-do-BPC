@@ -333,34 +333,41 @@ export const api = {
     return requestWithAuth(`/paineis/${id}`, { method: 'DELETE' });
   },
 
-  getIndicadores: async (painel_id?: string): Promise<Indicador[]> => {
-    const q = painel_id ? `?painel_id=${painel_id}` : '';
-    return requestWithAuth(`/indicadores${q}`);
+  getIndicadores: async (painelId?: string): Promise<Indicador[]> => {
+    const q = painelId ? `?painelId=${painelId}` : '';
+    return requestWithAuth(`/indicador${q}`);
   },
 
   createIndicador: async (data: {
-    painel_id: string;
+    painelId: string;
+    painel_id?: string;
     nome: string;
-    valor: string;
-    tipo?: string;
     descricao?: string;
+    unidade?: string;
+    fonte?: string;
+    valor?: string;
+    tipo?: string;
     variacao?: string;
     ordem?: number;
   }): Promise<any> => {
-    return requestWithAuth('/indicadores', {
+    return requestWithAuth('/indicador', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        painelId: data.painelId || data.painel_id,
+        painel_id: data.painelId || data.painel_id,
+      }),
     });
   },
 
   updateIndicador: async (id: string, data: Partial<Indicador>): Promise<any> => {
-    return requestWithAuth(`/indicadores/${id}`, {
+    return requestWithAuth(`/indicador/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   deleteIndicador: async (id: string): Promise<any> => {
-    return requestWithAuth(`/indicadores/${id}`, { method: 'DELETE' });
+    return requestWithAuth(`/indicador/${id}`, { method: 'DELETE' });
   },
 };

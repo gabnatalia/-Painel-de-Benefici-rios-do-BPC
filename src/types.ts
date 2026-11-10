@@ -115,15 +115,18 @@ export interface Painel {
 
 export interface Indicador {
   id: string;
-  painel_id: string;
   nome: string;
   descricao?: string;
-  valor: string;
-  tipo: string;
+  unidade?: string;
+  fonte?: string;
+  painelId: string;
+  painel_id?: string;
+  valor?: string;
+  tipo?: string;
   variacao?: string;
-  ordem: number;
-  data_criacao: string;
-  data_atualizacao: string;
+  ordem?: number;
+  data_criacao?: string;
+  data_atualizacao?: string;
   painel_nome?: string;
 }
 
